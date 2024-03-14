@@ -1,10 +1,7 @@
-# Simple parse of the 'games.json' file.
-import base64
 import datetime
 import os
 import json
 import pandas as pd
-import types
 from pydantic import BaseModel, Field
 import unicodedata
 
@@ -195,116 +192,6 @@ class Game:
         self.movies = df["movies"]
         self.tags = df["tags"]
 
-class UserTable(BaseModel):
-    usr_id: int
-    username: str
-    hashed_password: str
-    age: int
-    role: str
-    balance: float
-    date_joined: datetime.datetime = Field(default_factory=datetime.datetime.now)
-
-    def to_csv(self):
-        return pd.DataFrame.from_dict(self.dict())
-         
-
-class UserProfile(BaseModel):
-    user_id: int
-    first_name: str
-    last_name: str
-    freq_genre: str
-    freq_category: str
-    freq_tag: str
-
-class GamePurchase(BaseModel):
-    purchase_id: int
-    user_id: int
-    game_id: int
-    purchase_date: datetime.datetime = Field(default_factory=datetime.datetime.now)
-
-    def to_csv(self):
-        return pd.DataFrame.from_dict(self.dict())
-
-class GameTable(BaseModel):
-    game_id: int
-    game_name: str
-    release_date: datetime.datetime
-    estimated_owners: str # "0 - 20000"
-    price_usd: float # with 2 decimal places
-    about_game: str
-    metacritic_score: int
-    platform_support: str # "110" -> "Windows, Mac, Linux"
-    header_image: str # URL
-
-    def load_game(self, game: Game):
-        self.game_id = game.app_id
-        self.game_name = game.name
-        self.release_date = game.release_date
-        self.estimated_owners = game.estimated_owners
-        self.price_usd = game.price
-        self.about_game = game.long_description
-        self.metacritic_score = game.metacritic_score
-        self.platform_support = f"{game.support_windows}, {game.support_mac}, {game.support_linux}"
-        self.header_image = game.header_image
-
-    def to_csv(self):
-        return pd.DataFrame.from_dict(self.dict())
-
-class GameReview(BaseModel):
-    review_id: int
-    game_id: int
-    user_id: int
-    review: str
-    rating: int
-    date_posted: datetime.datetime = Field(default_factory=datetime.datetime.now)
-
-    def to_csv(self):
-        return pd.DataFrame.from_dict(self.dict())
-
-class GameTag(BaseModel):
-    tag_id: int
-    game_id: int
-    tag: str
-
-    def to_csv(self):
-        return pd.DataFrame.from_dict(self.dict())
-
-class GameGenre(BaseModel):
-    genre_id: int
-    game_id: int
-    genre: str
-
-class GameCategory(BaseModel):
-    category_id: int
-    game_id: int
-    category: str
-
-class GameVideo(BaseModel):
-    video_id: int
-    game_id: int
-    video_url: str
-
-class GameDeveloper(BaseModel):
-    developer_id: int
-    game_id: int
-    developer: str
-
-class GamePublisher(BaseModel):
-    publisher_id: int
-    game_id: int
-    publisher: str
-
-class GameLanguage(BaseModel):
-    language_id: int
-    game_id: int
-    language: str
-
-class GameAudioLanguage(BaseModel):
-    audio_language_id: int
-    game_id: int
-    audio_language: str
-
-
 # Load the dataset
 def load_dataset():
     games = []
@@ -316,6 +203,8 @@ def load_dataset():
     unique_publishers = set()
     unique_languages = set()
     unique_audio_languages = set()
+    unique_game_ids = set()
+    unique_game_names = set()
 
     if os.path.exists('games.json'):
         with open('games.json', 'r', encoding='utf-8') as fin:
@@ -325,7 +214,15 @@ def load_dataset():
 
     for app in dataset:
         appID = app                                         # AppID, unique identifier for each app (string).
-        game = dataset[app]             
+        game = dataset[app]
+
+        if appID in unique_game_ids:
+            continue
+        unique_game_ids.add(appID)
+
+        if game['name'] in unique_game_names:
+            continue
+        unique_game_names.add(game['name'])             
 
         name = game['name']                                 # Game name (string).
         releaseDate = game['release_date']                  # Release date (string).
@@ -708,6 +605,25 @@ def create_csv_tables():
 
     game_audio_language_df = pd.DataFrame(game_audio_language_table)
     game_audio_language_df.to_csv('game_audio_language.csv', index=False)
+
+    return [
+        ("game1.csv", "game"),
+        ("game2.csv", "game"),
+        ("genre.csv", "genres"),
+        ("game_genre.csv", "game_genres"),
+        ("category.csv", "categories"),
+        ("game_category.csv", "game_categories"),
+        ("tag.csv", "tags"),
+        ("game_tag.csv", "game_tags"),
+        ("developer.csv", "developers"),
+        ("game_developer.csv", "game_developers"),
+        ("publisher.csv", "publishers"),
+        ("game_publisher.csv", "game_publishers"),
+        ("language.csv", "supp_langs"),
+        ("game_language.csv", "game_langs"),
+        ("audio_language.csv", "supp_audio_langs"),
+        ("game_audio_language.csv", "game_audio_langs")
+    ]
 
 
 def convert_date(date):

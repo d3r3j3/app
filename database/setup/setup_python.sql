@@ -197,7 +197,7 @@ DROP PROCEDURE IF EXISTS sp_add_user;
 DROP PROCEDURE IF EXISTS sp_change_password;
 
 -- Generate a random salt for the user
-DELIMITER !
+
 CREATE FUNCTION make_salt(num_chars INT)
 RETURNS VARCHAR(20) NOT DETERMINISTIC
 BEGIN
@@ -214,11 +214,10 @@ BEGIN
     END WHILE;
 
     RETURN salt;
-END !
-DELIMITER ;
+END;
 
 -- Procedure to add a new user to the user table
-DELIMITER !
+
 CREATE PROCEDURE sp_add_user(
     new_username VARCHAR(20), password VARCHAR(20), user_role VARCHAR(20))
 BEGIN
@@ -232,11 +231,10 @@ BEGIN
     -- Insert the new user into the table.
     INSERT INTO user (username, password_hash, salt, user_role, date_joined)
     VALUES (new_username, new_hash, new_salt, user_role, CURDATE());
-END !
-DELIMITER ;
+END;
 
 -- Procedure to authenticate a user
-DELIMITER !
+
 CREATE FUNCTION authenticate(username VARCHAR(20), password VARCHAR(20))
 RETURNS TINYINT DETERMINISTIC
 BEGIN
@@ -259,11 +257,10 @@ BEGIN
 
   -- Return 1 if the hashes match, 0 otherwise.
   RETURN user_hash = given_hash;
-END !
-DELIMITER ;
+END;
 
 -- Procedure to change a user's password
-DELIMITER !
+
 CREATE PROCEDURE sp_change_password(
   username VARCHAR(20), new_password VARCHAR(20))
 BEGIN
@@ -278,8 +275,7 @@ BEGIN
   UPDATE user
   SET salt = new_salt, password_hash = new_hash
   WHERE user.username = username;
-END !
-DELIMITER ;
+END;
 
 -- Add admin user
 CALL sp_add_user('admin', 'admin', 'admin');

@@ -147,9 +147,13 @@ class User(BaseModel):
                 return None
             else:
                 cursor.callproc(PROC_ADD_USER, (self.username, password, DEFAULT_ROLE))
-                row = cursor.fetchone()
 
-                print("ADDING USER: ", row)
+                cursor.execute(f"SELECT * FROM user WHERE username = %s;", (self.username,))
+                row = cursor.fetchone()
+                conn.commit()
+
+                if not row:
+                    return None
 
                 user = User(
                     user_id=row[0],
@@ -158,6 +162,7 @@ class User(BaseModel):
                 )
 
                 return user
+            
             
 class Users(BaseModel):
     users: List[User]

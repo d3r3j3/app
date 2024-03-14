@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block navbar %}
+    <ul class="nav navbar-nav">
+        <li><a href="{{ url_for('home', page=0) }}">Home</a></li>
+        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+    </ul>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Game List</h1>
+    <div class="row">
+        {% for game in games %}
+            <div class="col-md-4">
+                <a href="{{ url_for('game', game_id=game.game_id) }}">
+                    <img src="{{ game.header_image }}" class="img-responsive">
+                    <h2>{{ game.game_name }}</h2>
+                </a>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+<!--
+    Add a next and previous button to the game list page
+ -->
+<div class="container">
+    <div class="row">
+        <div class="col-md-4">
+            <a href="{{ url_for('home', page=prev_page) }}" class="btn btn-primary">Previous</a>
+        </div>
+        <div class="col-md-4">
+            <a href="{{ url_for('home', page=next_page) }}" class="btn btn-primary">Next</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

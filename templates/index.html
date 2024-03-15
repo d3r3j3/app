@@ -3,36 +3,62 @@
 {% block title %}Home{% endblock %}
 
 {% block navbar %}
-    <ul class="nav navbar-nav">
-        <li><a href="{{ url_for('home', page=0) }}">Home</a></li>
-        <li><a href="{{ url_for('logout') }}">Logout</a></li>
-    </ul>
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item active">
+            <a class="nav-link" href="{{ url_for('home', page=0) }}">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">My Games</a>
+          </li>
+        </ul>
+    </div>
+    <a class="navbar-brand">Welcome, {{ user }}</a>
+    <div class="navbar">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+            </li>
+        </ul>
+    </div>
 {% endblock %}
 
 {% block content %}
+<!-- show each game with its header_image and title. -->
 <div class="container">
-    <h1>Game List</h1>
     <div class="row">
         {% for game in games %}
-            <div class="col-md-4">
-                <a href="{{ url_for('game', game_id=game.game_id) }}">
-                    <img src="{{ game.header_image }}" class="img-responsive">
-                    <h2>{{ game.game_name }}</h2>
+            <div class="col-md-4 mx-5">
+                <a href="{{ url_for('game', game_id=game.game_id) }}" class="link-offset-2 link-underline link-underline-opacity-0">
+                    <img src="{{ game.header_image }}" class="img-responsive shadow-lg p-3 mb-5 bg-white rounded">
+                    <h3>{{ game.game_name }}</h3>
                 </a>
             </div>
         {% endfor %}
     </div>
 </div>
-<!--
-    Add a next and previous button to the game list page
- -->
+
+<!-- add pagination -->
 <div class="container">
     <div class="row">
-        <div class="col-md-4">
-            <a href="{{ url_for('home', page=prev_page) }}" class="btn btn-primary">Previous</a>
-        </div>
-        <div class="col-md-4">
-            <a href="{{ url_for('home', page=next_page) }}" class="btn btn-primary">Next</a>
+        <div class="col-md-12">
+            <nav aria-label="Page navigation example">
+                <ul class="pagination
+                {% if page == 0 %}
+                    justify-content-end
+                {% else %}
+                    justify-content-between
+                {% endif %}">
+                    {% if page > 0 %}
+                        <li class="page-item">
+                            <a class="page-link" href="{{ url_for('home', page=page-1) }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('home', page=page+1) }}">Next</a>
+                    </li>
+                </ul>
+            </nav>
         </div>
     </div>
 </div>

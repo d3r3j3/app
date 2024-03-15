@@ -205,6 +205,7 @@ def load_dataset():
     unique_audio_languages = set()
     unique_game_ids = set()
     unique_game_names = set()
+    unique_movie_urls = set()
 
     if os.path.exists('games.json'):
         with open('games.json', 'r', encoding='utf-8') as fin:
@@ -298,8 +299,11 @@ def load_dataset():
             screenshotURL = screenshot                        # Game screenshot URL (string).
 
         movies = game['movies']                             # Game movies.
-        for movie in movies:            
+        for movie in movies:          
+            if movie in unique_movie_urls:
+                continue  
             movieURL = movie                                  # Game movie URL (string).
+            unique_movie_urls.add(movieURL)
 
         tags = game['tags']                                 # Tags.
         for tag in tags:           
@@ -606,6 +610,18 @@ def create_csv_tables():
     game_audio_language_df = pd.DataFrame(game_audio_language_table)
     game_audio_language_df.to_csv('game_audio_language.csv', index=False)
 
+    # create game_video csv
+    game_video_table = []
+    for game in games:
+        for movie in game.movies:
+            game_video_table.append({
+                "game_id": game.app_id,
+                "video_url": movie
+            })
+
+    game_video_df = pd.DataFrame(game_video_table)
+    game_video_df.to_csv('game_video.csv', index=False)
+
     return [
         ("game1.csv", "game"),
         ("game2.csv", "game"),
@@ -622,7 +638,8 @@ def create_csv_tables():
         ("language.csv", "supp_langs"),
         ("game_language.csv", "game_langs"),
         ("audio_language.csv", "supp_audio_langs"),
-        ("game_audio_language.csv", "game_audio_langs")
+        ("game_audio_language.csv", "game_audio_langs"),
+        ("game_video.csv", "game_videos")
     ]
 
 

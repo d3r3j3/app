@@ -29,7 +29,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from database.db import get_conn
-from database.objects import Game, Games, User
+from database.objects import Game, Games, User, GameInfo
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -176,6 +176,7 @@ async def home(request: Request, page: int = 0, user: str = Depends(get_current_
     return templates.TemplateResponse(
         "index.html",
         {"request": request, "games": games.games, "page": page,
+         "user": user, 
          "prev_page": page-1 if page > 0 else 0,
          "next_page": page+1 if len(games.games) == 10 else page
          }
@@ -183,10 +184,17 @@ async def home(request: Request, page: int = 0, user: str = Depends(get_current_
 
 @app.get("/games/{game_id}")
 async def game(game_id: int, request: Request, user: str = Depends(get_current_user)):
-    game = Game(game_id=game_id).get_game(app.db_conn)
+    conn_admin = get_conn(user="admin", password="admin")
+    game = GameInfo(game_id=game_id).get_game_info(conn_admin)
+    conn_admin.close()
+
     return templates.TemplateResponse(
         "game.html",
-        {"request": request, "game": game}
+        {
+            "request": request,
+            "user": user,
+            "game": game
+        }
     )
 
 

@@ -6,7 +6,18 @@ import mysql.connector
 # Procedures
 FUNC_AUTHENTICATE = 'authenticate'
 PROC_ADD_USER = 'sp_add_user'
+PROC_GET_GAME_INFO = 'sp_get_game_info'
 DEFAULT_ROLE = 'user'
+
+def get_supported_platforms(bin_str: str) -> List[str]:
+    platforms = []
+    if bin_str[0] == '1':
+        platforms.append('Windows')
+    if bin_str[1] == '1':
+        platforms.append('Mac')
+    if bin_str[2] == '1':
+        platforms.append('Linux')
+    return platforms
 
 class Game(BaseModel):
     game_id: Optional[int] = None
@@ -16,7 +27,7 @@ class Game(BaseModel):
     price_usd: Optional[float] = None
     about_game: Optional[str] = None
     metacritic_score: Optional[int] = None
-    platform_support: Optional[str] = None
+    platform_support: Optional[List[str]] = None
     header_image: Optional[str] = None
 
     def get_game(self, conn: mysql.connector.MySQLConnection) -> 'Game':
@@ -38,13 +49,65 @@ class Game(BaseModel):
                     price_usd=row[4],
                     about_game=row[5],
                     metacritic_score=row[6],
-                    platform_support=row[7],
+                    platform_support=get_supported_platforms(row[7]) if row[7] else None,
                     header_image=row[8]
                 )
 
                 return game
             else:
                 return None
+            
+class GameInfo(BaseModel):
+    game_id: Optional[int] = None
+    game_name: Optional[str] = None
+    release_date: Optional[datetime.date] = None
+    estimated_owners: Optional[str] = None
+    price_usd: Optional[float] = None
+    about_game: Optional[str] = None
+    metacritic_score: Optional[int] = None
+    platform_support: Optional[List[str]] = None
+    header_image: Optional[str] = None
+    video_urls: Optional[List[str]] = None
+    categories: Optional[List[str]] = None
+    genres: Optional[List[str]] = None
+    tags: Optional[List[str]] = None
+    supported_langs: Optional[List[str]] = None
+    supported_audio_langas: Optional[List[str]] = None
+    developers: Optional[List[str]] = None
+    publishers: Optional[List[str]] = None
+
+    def get_game_info(self, conn: mysql.connector.MySQLConnection) -> 'GameInfo':
+        params = (self.game_id,)
+
+        query = f"CALL {PROC_GET_GAME_INFO}(%s);"
+        
+        with conn.cursor() as cursor:
+            cursor.execute(query, (self.game_id,))
+            row = cursor.fetchone()
+            if row:
+                game_info = GameInfo(
+                    game_id=row[0],
+                    game_name=row[1],
+                    release_date=row[2],
+                    estimated_owners=row[3],
+                    price_usd=row[4],
+                    about_game=row[5],
+                    metacritic_score=row[6],
+                    platform_support=get_supported_platforms(row[7]) if row[7] else None,
+                    header_image=row[8],
+                    video_urls=row[9].split(',') if row[9] else None,
+                    categories=row[10].split(',') if row[10] else None,
+                    genres=row[11].split(',') if row[11] else None,
+                    tags=row[12].split(',') if row[12] else None,
+                    supported_langs=row[13].split(',') if row[13] else None,
+                    supported_audio_langas=row[14].split(',') if row[14] else None,
+                    developers=row[15].split(',') if row[15] else None,
+                    publishers=row[16].split(',') if row[16] else None
+                )
+
+                return game_info
+            else:
+                return None  
             
 class Games(BaseModel):
     games: List[Game]
@@ -69,7 +132,7 @@ class Games(BaseModel):
                     price_usd=row[4],
                     about_game=row[5],
                     metacritic_score=row[6],
-                    platform_support=row[7],
+                    platform_support=get_supported_platforms(row[7]) if row[7] else None,
                     header_image=row[8]
                 )
                 games.append(game)

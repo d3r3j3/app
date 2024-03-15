@@ -72,12 +72,12 @@ def run_parser():
     conn.close()
 
     # add admin user
-    conn = conn_admin()
-    with conn.cursor() as cursor:
-        cursor.callproc('sp_add_user', args=('admin', 'admin', 'admin'))
+    # conn = conn_admin()
+    # with conn.cursor() as cursor:
+    #     cursor.callproc('sp_add_user', args=('admin', 'admin', 'admin'))
 
-    conn.commit()
-    conn.close()
+    # conn.commit()
+    # conn.close()
 
 
 def main():

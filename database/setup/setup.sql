@@ -20,6 +20,7 @@ DROP TABLE IF EXISTS game;
 DROP TABLE IF EXISTS user;
 DROP TABLE IF EXISTS purchases;
 DROP TABLE IF EXISTS categories;
+DROP TABLE IF EXISTS game_videos;
 DROP TABLE IF EXISTS game_categories;
 DROP TABLE IF EXISTS genres;
 DROP TABLE IF EXISTS game_genres;
@@ -59,6 +60,14 @@ CREATE TABLE game (
 -- database connection must be set to utf8mb4 to support emoji
 ALTER TABLE game
 CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- Table containing game videos
+CREATE TABLE game_videos (
+    video_id INT PRIMARY KEY AUTO_INCREMENT,
+    game_id INT,
+    video_url VARCHAR(255),
+    FOREIGN KEY (game_id) REFERENCES game(game_id)
+);
 
 -- Table containing User/Client information
 CREATE TABLE user (
@@ -283,3 +292,61 @@ DELIMITER ;
 
 -- Add admin user
 CALL sp_add_user('admin', 'admin', 'admin');
+
+-- Procedure to get all information about a game
+DROP PROCEDURE IF EXISTS sp_get_game_info;
+
+DELIMITER !
+CREATE PROCEDURE sp_get_game_info(game_id INT)
+BEGIN
+    CREATE TEMPORARY TABLE game_info AS
+    SELECT
+        game.game_id,
+        game.game_name,
+        game.release_date,
+        game.estimated_owners,
+        game.price_usd,
+        game.about_game,
+        game.metacritic_score,
+        game.platform_support,
+        game.header_iamge,
+        GROUP_CONCAT(DISTINCT game_videos.video_url) AS video_urls,
+        GROUP_CONCAT(DISTINCT categories.category_name) AS categories,
+        GROUP_CONCAT(DISTINCT genres.genre_name) AS genres,
+        GROUP_CONCAT(DISTINCT tags.tag_name) AS tags,
+        GROUP_CONCAT(DISTINCT supp_langs.lang) AS supported_langs,
+        GROUP_CONCAT(DISTINCT supp_audio_langs.audio_lang) AS supported_audio_langs,
+        GROUP_CONCAT(DISTINCT developers.dev_name) AS developers,
+        GROUP_CONCAT(DISTINCT publishers.pub_name) AS publishers
+    FROM game
+    NATURAL LEFT JOIN game_videos
+    NATURAL LEFT JOIN game_categories
+    NATURAL LEFT JOIN categories
+    NATURAL LEFT JOIN game_genres
+    NATURAL LEFT JOIN genres
+    NATURAL LEFT JOIN game_tags
+    NATURAL LEFT JOIN tags
+    NATURAL LEFT JOIN game_langs
+    NATURAL LEFT JOIN supp_langs
+    NATURAL LEFT JOIN game_audio_langs
+    NATURAL LEFT JOIN supp_audio_langs
+    NATURAL LEFT JOIN game_developers
+    NATURAL LEFT JOIN developers
+    NATURAL LEFT JOIN game_publishers
+    NATURAL LEFT JOIN publishers
+    WHERE game.game_id = game_id
+    GROUP BY 
+        game.game_id,
+        game.game_name,
+        game.release_date,
+        game.estimated_owners,
+        game.price_usd,
+        game.about_game,
+        game.metacritic_score,
+        game.platform_support,
+        game.header_iamge;
+
+    SELECT * FROM game_info;
+    DROP TEMPORARY TABLE game_info;
+END !
+DELIMITER ;

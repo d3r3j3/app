@@ -17,3 +17,4 @@ __pycache__
 /database/setup/game_tag.csv
 /database/setup/tag.csv
 /database/setup/games.json
+/database/setup/game_video.csv

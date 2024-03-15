@@ -3,16 +3,64 @@
 {% block title %}Game{% endblock %}
 
 {% block navbar %}
-    <ul class="nav navbar-nav">
-        <li><a href="{{ url_for('home', page=0) }}">Home</a></li>
-        <li><a href="{{ url_for('logout') }}">Logout</a></li>
+<div class="collapse navbar-collapse" id="navbarNav">
+    <ul class="navbar-nav">
+      <li class="nav-item active">
+        <a class="nav-link" href="{{ url_for('home', page=0) }}">Home</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" href="#">My Games</a>
+      </li>
     </ul>
+</div>
+<a class="navbar-brand">Welcome, {{ user }}</a>
+<div class="navbar">
+    <ul class="navbar-nav">
+        <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+        </li>
+    </ul>
+</div>
 {% endblock %}
 
 {% block content %}
+    <!-- create floating grids using shadow -->
     <div class="container">
-        <h1>{{ game.game_name }}</h1>
-        <img src="{{ game.header_image }}" class="img-responsive">
-        <p>{{ game.price_usd }}</p>
+        <div class="row">
+            <div class="col-lg-8 shadow-lg p-3 mb-5 bg-white rounded">
+                <div class="container">
+                    <div class="row">
+                        <div class="col-lg-5">
+                            <h1>{{ game.game_name }}</h1>
+                            <img src="{{ game.header_image }}" class="img-responsive" style="max-width: 90%;">
+                        </div>
+                        <div class="col-lg-7">
+                            <p>{{ game.about_game }}</p>
+                            <p>Price: ${{ game.price_usd }}</p>
+                            <p>Release Date: {{ game.release_date }}</p>
+                            <form action="" method="post">
+                                <button type="submit" class="btn btn-primary">Purchase</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% if game.video_urls %}
+            <div class="row">
+                <div class="col-lg-8 shadow-lg p-3 mb-5 bg-white rounded">
+                    <h2>Videos</h2>
+                    <div class="container">
+                        <div class="row">
+                            {% for video in game.video_urls %}
+                                <div class="col-lg-6">
+                                    <iframe width="100%" height="315" src="{{ video }}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>        
+        {% endif %}
     </div>
 {% endblock %}

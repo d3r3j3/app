@@ -52,7 +52,7 @@ CREATE TABLE game (
     -- Platform support for game, (ex: "110" windows and linux support)
     platform_support VARCHAR(3),
     -- URL to game image
-    header_iamge VARCHAR(255),
+    header_image VARCHAR(255),
     PRIMARY KEY (game_id, game_name)
 );
 
@@ -73,11 +73,11 @@ CREATE TABLE game_videos (
 CREATE TABLE user (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(255) UNIQUE NOT NULL,
+    balance DECIMAL(10, 2) DEFAULT 200.00,
     password_hash BINARY(64) NOT NULL,
     salt CHAR(8) NOT NULL,
-    age INT,
     -- user role (admin, user, etc)
-    user_role VARCHAR(255) NOT NULL DEFAULT 'user',
+    user_role VARCHAR(10) NOT NULL DEFAULT 'user',
     date_joined DATE
 ); 
 
@@ -289,11 +289,28 @@ END;
 -- Add admin user
 CALL sp_add_user('admin', 'admin', 'admin');
 
+-- Function to check if game purchased by user
+DROP FUNCTION IF EXISTS has_purchased;
+
+CREATE FUNCTION has_purchased(user_id INT, game_id INT)
+RETURNS TINYINT
+BEGIN
+    DECLARE purchased TINYINT;
+
+    SELECT COUNT(*) INTO purchased
+    FROM purchases
+    WHERE purchases.user_id = user_id AND purchases.game_id = game_id;
+
+    RETURN purchased;
+END;
+
 -- Procedure to get all information about a game
 DROP PROCEDURE IF EXISTS sp_get_game_info;
 
 CREATE PROCEDURE sp_get_game_info(game_id INT)
 BEGIN
+
+
     CREATE TEMPORARY TABLE game_info AS
     SELECT
         game.game_id,
@@ -304,7 +321,7 @@ BEGIN
         game.about_game,
         game.metacritic_score,
         game.platform_support,
-        game.header_iamge,
+        game.header_image,
         GROUP_CONCAT(DISTINCT game_videos.video_url) AS video_urls,
         GROUP_CONCAT(DISTINCT categories.category_name) AS categories,
         GROUP_CONCAT(DISTINCT genres.genre_name) AS genres,
@@ -339,8 +356,53 @@ BEGIN
         game.about_game,
         game.metacritic_score,
         game.platform_support,
-        game.header_iamge;
+        game.header_image;
 
     SELECT * FROM game_info;
     DROP TEMPORARY TABLE game_info;
 END;
+
+-- Create a trigger to update the balance of the user after a purchase
+DROP TRIGGER IF EXISTS update_balance;
+
+CREATE TRIGGER update_balance
+AFTER INSERT ON purchases
+FOR EACH ROW
+BEGIN
+    UPDATE user
+    SET balance = balance - (SELECT price_usd FROM game WHERE game_id = NEW.game_id)
+    WHERE user_id = NEW.user_id;
+END;
+
+-- Create a ufd to verify if a user has enough balance to make a purchase
+DROP FUNCTION IF EXISTS has_enough_balance;
+
+CREATE FUNCTION has_enough_balance(user_id INT, game_id INT)
+RETURNS TINYINT
+BEGIN
+    DECLARE game_price DECIMAL(10, 2);
+    DECLARE user_balance DECIMAL(10, 2);
+
+    SELECT price_usd INTO game_price FROM game WHERE game.game_id = game_id;
+    SELECT balance INTO user_balance FROM user WHERE user.user_id = user_id;
+
+    IF user_balance >= game_price THEN
+        RETURN 1;
+    ELSE
+        RETURN 0;
+    END IF;
+END;
+
+-- Create a procedure to make a purchase
+DROP PROCEDURE IF EXISTS sp_make_purchase;
+
+CREATE PROCEDURE sp_make_purchase(user_id INT, game_id INT)
+BEGIN
+    IF has_enough_balance(user_id, game_id) AND NOT has_purchased(user_id, game_id) THEN
+        INSERT INTO purchases (user_id, game_id, purchase_date)
+        VALUES (user_id, game_id, CURDATE());
+    END IF;
+END;
+
+-- Create a view that shows user's purchases with game name and price
+DROP VIEW IF EXISTS user_purchases;

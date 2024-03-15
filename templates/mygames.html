@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}My Games{% endblock %}
+
+{% block navbar %}
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav">
+          <li class="nav-item active">
+            <a class="nav-link" href="{{ url_for('home', page=0) }}">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('mygames') }}">My Games</a>
+          </li>
+        </ul>
+    </div>
+    <div class="navbar">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('account') }}">Welcome, {{ user.username }}</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+            </li>
+        </ul>
+    </div>
+{% endblock %}
+{% block content %}
+    <div class="container d-flex">
+        <div class="row">
+            <div class="col-lg-8 mx-auto shadow-lg p-3 mb-5 bg-white rounded">
+                <h2>My Games</h2>
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col"></th>
+                            <th scope="col">Game Name</th>
+                            <th scope="col">Supported Platforms</th>
+                            <th scope="col">Metacritic Score</th>
+                            <th scope="col">Price</th>
+                            <th scope="col">Purchase Date</th>
+                            <th scope="col">Release Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for game in purchases %}
+                            <tr>
+                                <th scope="row"><img src="{{ game.header_image }}" class="img-responsive" style="max-width: 40%;"></th>
+                                <td><a href="{{ url_for('game', game_id=game.game_id) }}">{{ game.game_name }}</a></td>
+                                <td>{% for platform in game.platform_support %}{{ platform }}<br>{% endfor %}</td>
+                                <td>{{ game.metacritic_score }}</td>
+                                <td>${{ game.price_usd }}</td>
+                                <td>{{ game.purchase_date }}</td>
+                                <td>{{ game.release_date }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endblock %}

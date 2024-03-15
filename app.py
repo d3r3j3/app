@@ -29,7 +29,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from database.db import get_conn
-from database.objects import Game, Games, User, GameInfo
+from database.objects import Game, Games, User, GameInfo, UserPurchases, Users
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -89,9 +89,12 @@ async def shutdown_event():
     app.db_conn.close()
 
 # create token
-async def create_token(username: str):
+async def create_token(username: str, user_role: str = "user", user_id: int = None):
+    if user_id is None:
+        return None
+    
     exp_time = datetime.now(timezone.utc) + timedelta(minutes=30)
-    payload = {"sub": username, "exp": exp_time}
+    payload = {"sub": username, "role": user_role, "id": user_id, "exp": exp_time}
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return token
 
@@ -100,18 +103,25 @@ async def verify_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
-        if username is None:
+        user_role: str = payload.get("role")
+        user_id: int = payload.get("id")
+
+        if username is None or user_role is None or user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
     except jwt.PyJWTError as e:
         print("jwt error: ", e)
         raise HTTPException(status_code=401, detail="Invalid token")
-    return username
+    return {
+        "username": username,
+        "user_role": user_role,
+        "user_id": user_id
+    }
 
 
 # OAuth Setup
 async def get_current_user(token: str = Depends(oauth2scheme)):
-    username = await verify_token(token)
-    return username
+    user = await verify_token(token)
+    return user
 
 # token route
 @app.post("/login")
@@ -127,7 +137,10 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    token = await create_token(username)
+    token = await create_token(user.username, user.user_role, user.user_id)
+
+    if token is None:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     # go to home page
     home_url = f"/home/0"
@@ -145,7 +158,6 @@ async def logout(request: Request):
 # create account
 @app.post("/register")
 async def create_account(request: Request, username: str=Form(), password: str=Form()):
-    print(username, password)
     admin_conn = get_conn(user="admin", password="admin")
     user = User(username=username).create_user(admin_conn, password)
     admin_conn.close()
@@ -176,7 +188,7 @@ async def home(request: Request, page: int = 0, user: str = Depends(get_current_
     return templates.TemplateResponse(
         "index.html",
         {"request": request, "games": games.games, "page": page,
-         "user": user, 
+         "user": user,
          "prev_page": page-1 if page > 0 else 0,
          "next_page": page+1 if len(games.games) == 10 else page
          }
@@ -185,7 +197,7 @@ async def home(request: Request, page: int = 0, user: str = Depends(get_current_
 @app.get("/games/{game_id}")
 async def game(game_id: int, request: Request, user: str = Depends(get_current_user)):
     conn_admin = get_conn(user="admin", password="admin")
-    game = GameInfo(game_id=game_id).get_game_info(conn_admin)
+    game = GameInfo(game_id=game_id).get_game_info(conn_admin, user["user_id"])
     conn_admin.close()
 
     return templates.TemplateResponse(
@@ -196,6 +208,96 @@ async def game(game_id: int, request: Request, user: str = Depends(get_current_u
             "game": game
         }
     )
+
+@app.get("/mygames")
+async def mygames(request: Request, user: str = Depends(get_current_user)):
+    app.db_conn = get_conn()
+    games = UserPurchases(user_id=user["user_id"]).get_user_purchases(app.db_conn, user["user_id"])
+
+    return templates.TemplateResponse(
+        "mygames.html",
+        {
+            "request": request,
+            "user": user,
+            "purchases": games
+        }
+    )
+
+@app.get("/account")
+async def account(request: Request, user: str = Depends(get_current_user)):
+    app.db_conn = get_conn()
+    account = User(user_id=user["user_id"]).get_user(app.db_conn)
+
+    if user["user_role"] == "admin":
+        conn_admin = get_conn(user="admin", password="admin")
+        users = Users(users=[]).get_users(conn_admin)
+        conn_admin.close()
+
+        return templates.TemplateResponse(
+            "account.html",
+            {
+                "request": request,
+                "user": user,
+                "acnt": account,
+                "users": users.users
+            }
+        )
+
+
+    return templates.TemplateResponse(
+        "account.html",
+        {
+            "request": request,
+            "user": user,
+            "acnt": account
+        }
+    )
+
+@app.post("/change_password")
+async def change_password(request: Request, user: str = Depends(get_current_user), password: str = Form(...)):
+    conn_admin = get_conn(user="admin", password="admin")
+    temp_user = User(user_id=user["user_id"], username=user["username"]).change_password(conn_admin, password)
+    conn_admin.close()
+
+    account = User(user_id=user["user_id"]).get_user(app.db_conn)
+
+    if temp_user is None:
+        return templates.TemplateResponse(
+            "account.html",
+            {
+                "request": request,
+                "user": user,
+                "acnt": account,
+                "error": "Password not changed"
+            }
+        )
+
+    # logout
+    response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie("Authorization", "")
+    return response
+
+@app.post("/purchase_game")
+async def purchase_game(request: Request, game_id: int = Form(...), user: str = Depends(get_current_user)):
+    conn_admin = get_conn(user="admin", password="admin")
+    purchase = GameInfo(game_id=game_id).purchase_game(conn_admin, user["user_id"])
+    conn_admin.close()
+
+    if purchase is None:
+        conn_admin = get_conn(user="admin", password="admin")
+        game = GameInfo(game_id=game_id).get_game_info(conn_admin)
+        conn_admin.close()
+        return templates.TemplateResponse(
+            "game.html",
+            {
+                "request": request,
+                "user": user,
+                "game": game,
+                "error": "Game could not be purchased."
+            }
+        )
+    
+    return RedirectResponse(url="/mygames", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # run the app

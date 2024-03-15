@@ -52,7 +52,7 @@ CREATE TABLE game (
     -- Platform support for game, (ex: "110" windows and linux support)
     platform_support VARCHAR(3),
     -- URL to game image
-    header_iamge VARCHAR(255),
+    header_image VARCHAR(255),
     PRIMARY KEY (game_id, game_name)
 );
 
@@ -63,9 +63,9 @@ CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Table containing game videos
 CREATE TABLE game_videos (
-    video_id INT PRIMARY KEY AUTO_INCREMENT,
     game_id INT,
     video_url VARCHAR(255),
+    PRIMARY KEY (game_id, video_url),
     FOREIGN KEY (game_id) REFERENCES game(game_id)
 );
 
@@ -73,11 +73,11 @@ CREATE TABLE game_videos (
 CREATE TABLE user (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(255) UNIQUE NOT NULL,
+    balance DECIMAL(10, 2) DEFAULT 200.00,
     password_hash BINARY(64) NOT NULL,
     salt CHAR(8) NOT NULL,
-    age INT,
     -- user role (admin, user, etc)
-    user_role VARCHAR(255) NOT NULL DEFAULT 'user',
+    user_role VARCHAR(10) NOT NULL DEFAULT 'user',
     date_joined DATE
 ); 
 
@@ -206,6 +206,7 @@ DROP PROCEDURE IF EXISTS sp_add_user;
 DROP PROCEDURE IF EXISTS sp_change_password;
 
 -- Generate a random salt for the user
+
 DELIMITER !
 CREATE FUNCTION make_salt(num_chars INT)
 RETURNS VARCHAR(20) NOT DETERMINISTIC
@@ -227,6 +228,7 @@ END !
 DELIMITER ;
 
 -- Procedure to add a new user to the user table
+
 DELIMITER !
 CREATE PROCEDURE sp_add_user(
     new_username VARCHAR(20), password VARCHAR(20), user_role VARCHAR(20))
@@ -245,6 +247,7 @@ END !
 DELIMITER ;
 
 -- Procedure to authenticate a user
+
 DELIMITER !
 CREATE FUNCTION authenticate(username VARCHAR(20), password VARCHAR(20))
 RETURNS TINYINT DETERMINISTIC
@@ -272,6 +275,7 @@ END !
 DELIMITER ;
 
 -- Procedure to change a user's password
+
 DELIMITER !
 CREATE PROCEDURE sp_change_password(
   username VARCHAR(20), new_password VARCHAR(20))
@@ -293,12 +297,31 @@ DELIMITER ;
 -- Add admin user
 CALL sp_add_user('admin', 'admin', 'admin');
 
+-- Function to check if game purchased by user
+DROP FUNCTION IF EXISTS has_purchased;
+
+DELIMITER !
+CREATE FUNCTION has_purchased(user_id INT, game_id INT)
+RETURNS TINYINT
+BEGIN
+    DECLARE purchased TINYINT;
+
+    SELECT COUNT(*) INTO purchased
+    FROM purchases
+    WHERE purchases.user_id = user_id AND purchases.game_id = game_id;
+
+    RETURN purchased;
+END !
+DELIMITER ;
+
 -- Procedure to get all information about a game
 DROP PROCEDURE IF EXISTS sp_get_game_info;
 
 DELIMITER !
 CREATE PROCEDURE sp_get_game_info(game_id INT)
 BEGIN
+
+
     CREATE TEMPORARY TABLE game_info AS
     SELECT
         game.game_id,
@@ -309,7 +332,7 @@ BEGIN
         game.about_game,
         game.metacritic_score,
         game.platform_support,
-        game.header_iamge,
+        game.header_image,
         GROUP_CONCAT(DISTINCT game_videos.video_url) AS video_urls,
         GROUP_CONCAT(DISTINCT categories.category_name) AS categories,
         GROUP_CONCAT(DISTINCT genres.genre_name) AS genres,
@@ -344,9 +367,60 @@ BEGIN
         game.about_game,
         game.metacritic_score,
         game.platform_support,
-        game.header_iamge;
+        game.header_image;
 
     SELECT * FROM game_info;
     DROP TEMPORARY TABLE game_info;
 END !
 DELIMITER ;
+
+-- Create a trigger to update the balance of the user after a purchase
+DROP TRIGGER IF EXISTS update_balance;
+
+DELIMITER !
+CREATE TRIGGER update_balance
+AFTER INSERT ON purchases
+FOR EACH ROW
+BEGIN
+    UPDATE user
+    SET balance = balance - (SELECT price_usd FROM game WHERE game_id = NEW.game_id)
+    WHERE user_id = NEW.user_id;
+END !
+DELIMITER ;
+
+-- Create a ufd to verify if a user has enough balance to make a purchase
+DROP FUNCTION IF EXISTS has_enough_balance;
+
+DELIMITER !
+CREATE FUNCTION has_enough_balance(user_id INT, game_id INT)
+RETURNS TINYINT
+BEGIN
+    DECLARE game_price DECIMAL(10, 2);
+    DECLARE user_balance DECIMAL(10, 2);
+
+    SELECT price_usd INTO game_price FROM game WHERE game.game_id = game_id;
+    SELECT balance INTO user_balance FROM user WHERE user.user_id = user_id;
+
+    IF user_balance >= game_price THEN
+        RETURN 1;
+    ELSE
+        RETURN 0;
+    END IF;
+END !
+DELIMITER ;
+
+-- Create a procedure to make a purchase
+DROP PROCEDURE IF EXISTS sp_make_purchase;
+
+DELIMITER !
+CREATE PROCEDURE sp_make_purchase(user_id INT, game_id INT)
+BEGIN
+    IF has_enough_balance(user_id, game_id) AND NOT has_purchased(user_id, game_id) THEN
+        INSERT INTO purchases (user_id, game_id, purchase_date)
+        VALUES (user_id, game_id, CURDATE());
+    END IF;
+END !
+DELIMITER ;
+
+-- Create a view that shows user's purchases with game name and price
+DROP VIEW IF EXISTS user_purchases;

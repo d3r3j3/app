@@ -26,48 +26,154 @@
 {% endblock %}
 
 {% block content %}
-<!-- show each game with its header_image and title. -->
-<div class="container">
-    <div class="row">
-        {% for game in games %}
-            <div class="col-md-5 mx-auto">
-                <a href="{{ url_for('game', game_id=game.game_id) }}" class="link-offset-2 link-underline link-underline-opacity-0">
-                    <h3>{{ game.game_name }}</h3>
-                    <img src="{{ game.header_image }}" class="img-responsive shadow-lg p-3 mb-5 bg-white rounded">
-                </a>
-            </div>
-        {% endfor %}
-    </div>
-</div>
 
-<!-- add pagination -->
 <div class="container">
-    <div class="row">
-        <div class="col-md-12">
-            <nav aria-label="Page navigation example">
-                <ul class="pagination justify-content-center">
-                    <li class="page-item 
-                        {% if page == 0 %}
-                            disabled
-                        {% endif %}
-                    ">
-                        <a class="page-link" href="{{ url_for('home', page=page-1) }}">Previous</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('home', page=page) }}">{{ page+1 }}</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('home', page=page+1) }}">{{ page+2 }}</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('home', page=page+2) }}">{{ page+3 }}</a>
-                    </li>
-                    <li class="page-item">
-                        <a class="page-link" href="{{ url_for('home', page=page+1) }}">Next</a>
-                    </li>
-                </ul>
-            </nav>
+    <div class="row mx-auto">
+        <div class="col-md-3 mx-auto">
+            <div class="card sticky-top my-2 overflow-auto" style="max-height: 80%;">
+                <div class="card-header">
+                    <h4>Filter</h4>
+                </div>
+                <div class="card-body">
+                    <nav>
+                        <ul class="pagination
+                            justify-content-center
+                        ">
+                            <li class="page-item
+                                {% if page == 0 %}
+                                    disabled
+                                {% endif %}
+                            ">
+                                <a class="page-link" href="
+                                    {% if prev_page %}
+                                        {{ prev_page }}
+                                    {% else %}
+                                        {{ url_for('home', page=page-1) }}
+                                    {% endif %}
+                                ">Previous</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="
+                                    {% if next_page %}
+                                        {{ next_page }}
+                                    {% else %}
+                                        {{ url_for('home', page=page+1) }}
+                                    {% endif %}
+                                ">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                    <form action="{{ url_for('home', page=page) }}" method="post">
+                        <label for="genre">Genre</label>
+                        <div class="form-group overflow-auto" style="max-height: 200px;">
+                            {% for genre in genres %}
+                                <div class="form-check ml-3">
+                                    <input class="form-check-input" type="checkbox" value="{{ genre.id }}" id="{{ genre.id }}" name="genre" 
+                                    {% if genre.checked %}
+                                        checked
+                                    {% endif %}
+                                    >
+                                    <label class="form-check label" for="{{ genre.id }}">
+                                        {{ genre.name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <label for="tag">Tag</label>
+                        <div class="form-group overflow-auto" style="max-height: 200px;">
+                            {% for tag in tags %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="{{ tag.id }}" id="{{ tag.id }}" name="tag"
+                                    {% if tag.checked %}
+                                        checked
+                                    {% endif %}
+                                    >
+                                    <label class="form-check label" for="{{ tag.id }}">
+                                        {{ tag.name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <label for="category">Category</label>
+                        <div class="form-group overflow-auto" style="max-height: 200px;">
+                            {% for category in categories %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="{{ category.id }}" id="{{ category.id }}" name="category"
+                                    {% if category.checked %}
+                                        checked
+                                    {% endif %}
+                                    >
+                                    <label class="form-check label" for="{{ category.id }}">
+                                        {{ category.name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <label for="developer">Developer</label>
+                        <div class="form-group overflow-auto" style="max-height: 200px;">
+                            {% for developer in developers %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="{{ developer.id }}" id="{{ developer.id }}" name="developer"
+                                    {% if developer.checked %}
+                                        checked
+                                    {% endif %}
+                                    >
+                                    <label class="form-check label" for="{{ developer.id }}">
+                                        {{ developer.name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <label for="publisher">Publisher</label>
+                        <div class="form-group overflow-auto" style="max-height: 200px;">
+                            {% for publisher in publishers %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="{{ publisher.id }}" id="{{ publisher.id }}" name="publisher"
+                                    {% if publisher.checked %}
+                                        checked
+                                    {% endif %}
+                                    >
+                                    <label class="form-check label" for="{{ publisher.id }}">
+                                        {{ publisher.name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <label for="langs">Languages</label>
+                        <div class="form-group overflow-auto" style="max-height: 200px;">
+                            {% for lang in langs %}
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="{{ lang.id }}" id="{{ lang.id }}" name="lang"
+                                    {% if lang.checked %}
+                                        checked
+                                    {% endif %}
+                                    >
+                                    <label class="form-check label" for="{{ lang.id }}">
+                                        {{ lang.name }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm my-2">Filter</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9 mx-auto">
+            <div class="container">
+                <div class="row">
+                    {% for game in games %}
+                        <div class="col-md-5 mx-auto">
+                            <a href="{{ url_for('game', game_id=game.game_id) }}" class="link-offset-2 link-underline link-underline-opacity-0">
+                                <h3>{{ game.game_name }}</h3>
+                                <img src="{{ game.header_image }}" class="img-responsive shadow-lg p-3 mb-5 bg-white rounded" style="max-width: 100%;">
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
 {% endblock %}

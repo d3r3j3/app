@@ -613,11 +613,13 @@ def create_csv_tables():
     # create game_video csv
     game_video_table = []
     for game in games:
-        for movie in game.movies:
-            game_video_table.append({
-                "game_id": game.app_id,
-                "video_url": movie
-            })
+        movie = game.movies[0] if len(game.movies) > 0 else ""
+        if movie == "":
+            continue
+        game_video_table.append({
+            "game_id": game.app_id,
+            "video_url": movie
+        })
 
     game_video_df = pd.DataFrame(game_video_table)
     game_video_df.to_csv('game_video.csv', index=False)
@@ -644,7 +646,6 @@ def create_csv_tables():
 
 
 def convert_date(date):
-    # convert Oct 10, 2020 to 2020-10-10
     date = date.split(' ')
     month = date[0]
     if len(date) == 2:

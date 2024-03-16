@@ -66,7 +66,7 @@ CREATE TABLE game_videos (
     game_id INT,
     video_url VARCHAR(255),
     PRIMARY KEY (game_id, video_url),
-    FOREIGN KEY (game_id) REFERENCES game(game_id)
+    FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
 );
 
 -- Table containing User/Client information
@@ -87,8 +87,8 @@ CREATE TABLE purchases (
     user_id INT,
     game_id INT,
     purchase_date DATE,
-    FOREIGN KEY (user_id) REFERENCES user(user_id),
-    FOREIGN KEY (game_id) REFERENCES game(game_id)
+    FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
 );
 
 -- Contains single category for each game
@@ -101,8 +101,8 @@ CREATE TABLE categories (
 CREATE TABLE game_categories (
     game_id INT,
     category_id INT,
-    FOREIGN KEY (game_id) REFERENCES game(game_id),
-    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+    FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
+    FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE CASCADE
 );
 
 -- Contains single genre for each game
@@ -115,8 +115,8 @@ CREATE TABLE genres (
 CREATE TABLE game_genres (
     game_id INT,
     genre_id INT,
-    FOREIGN KEY (game_id) REFERENCES game(game_id),
-    FOREIGN KEY (genre_id) REFERENCES genres(genre_id)
+    FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
+    FOREIGN KEY (genre_id) REFERENCES genres(genre_id) ON DELETE CASCADE
 );
 
 -- Contains all unique tags
@@ -129,8 +129,8 @@ CREATE TABLE tags (
 CREATE TABLE game_tags (
     game_id INT,
     tag_id INT,
-    FOREIGN KEY (game_id) REFERENCES game(game_id),
-    FOREIGN KEY (tag_id) REFERENCES tags(tag_id)
+    FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
+    FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE
 );
 
 -- Contains all unique languages
@@ -143,8 +143,8 @@ CREATE TABLE supp_langs (
 CREATE TABLE game_langs (
     game_id INT,
     lang_id INT,
-    FOREIGN KEY (game_id) REFERENCES game(game_id),
-    FOREIGN KEY (lang_id) REFERENCES supp_langs(lang_id)
+    FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
+    FOREIGN KEY (lang_id) REFERENCES supp_langs(lang_id) ON DELETE CASCADE
 );
 
 -- Contains all unique audio languages
@@ -157,8 +157,9 @@ CREATE TABLE supp_audio_langs (
 CREATE TABLE game_audio_langs (
     game_id INT,
     audio_lang_id INT,
-    FOREIGN KEY (game_id) REFERENCES game(game_id),
+    FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
     FOREIGN KEY (audio_lang_id) REFERENCES supp_audio_langs(audio_lang_id)
+    ON DELETE CASCADE
 );
 
 -- Contains all unique developers
@@ -176,8 +177,8 @@ CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE TABLE game_developers (
     game_id INT,
     dev_id INT,
-    FOREIGN KEY (game_id) REFERENCES game(game_id),
-    FOREIGN KEY (dev_id) REFERENCES developers(dev_id)
+    FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
+    FOREIGN KEY (dev_id) REFERENCES developers(dev_id) ON DELETE CASCADE
 );
 
 -- Contains all unique publishers
@@ -195,8 +196,8 @@ CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE TABLE game_publishers (
     game_id INT,
     pub_id INT,
-    FOREIGN KEY (game_id) REFERENCES game(game_id),
-    FOREIGN KEY (pub_id) REFERENCES publishers(pub_id)
+    FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
+    FOREIGN KEY (pub_id) REFERENCES publishers(pub_id) ON DELETE CASCADE
 );
 
 -- Drop Procedures and Functions if they exist
@@ -240,6 +241,28 @@ BEGIN
     -- Insert the new user into the table.
     INSERT INTO user (username, password_hash, salt, user_role, date_joined)
     VALUES (new_username, new_hash, new_salt, user_role, CURDATE());
+END;
+
+-- Procedure to delete a user from the user table
+DROP PROCEDURE IF EXISTS sp_delete_user;
+
+CREATE PROCEDURE sp_delete_user(
+    username VARCHAR(20), user_role VARCHAR(20))
+BEGIN
+    IF user_role = 'admin' THEN
+        DELETE FROM user WHERE user.username = username;
+    END IF;
+END;
+
+-- Procedure to update a user's role
+DROP PROCEDURE IF EXISTS sp_update_user_role;
+
+CREATE PROCEDURE sp_update_user_role(
+    username VARCHAR(20), new_role VARCHAR(20))
+BEGIN
+    UPDATE user
+    SET user_role = new_role
+    WHERE user.username = username;
 END;
 
 -- Procedure to authenticate a user
@@ -309,8 +332,6 @@ DROP PROCEDURE IF EXISTS sp_get_game_info;
 
 CREATE PROCEDURE sp_get_game_info(game_id INT)
 BEGIN
-
-
     CREATE TEMPORARY TABLE game_info AS
     SELECT
         game.game_id,
@@ -362,7 +383,7 @@ BEGIN
     DROP TEMPORARY TABLE game_info;
 END;
 
--- Create a trigger to update the balance of the user after a purchase
+-- trigger to update the balance of the user after a purchase
 DROP TRIGGER IF EXISTS update_balance;
 
 CREATE TRIGGER update_balance
@@ -374,7 +395,7 @@ BEGIN
     WHERE user_id = NEW.user_id;
 END;
 
--- Create a ufd to verify if a user has enough balance to make a purchase
+-- ufd to verify if a user has enough balance to make a purchase
 DROP FUNCTION IF EXISTS has_enough_balance;
 
 CREATE FUNCTION has_enough_balance(user_id INT, game_id INT)
@@ -393,7 +414,7 @@ BEGIN
     END IF;
 END;
 
--- Create a procedure to make a purchase
+-- procedure to make a purchase
 DROP PROCEDURE IF EXISTS sp_make_purchase;
 
 CREATE PROCEDURE sp_make_purchase(user_id INT, game_id INT)
@@ -404,5 +425,145 @@ BEGIN
     END IF;
 END;
 
--- Create a view that shows user's purchases with game name and price
-DROP VIEW IF EXISTS user_purchases;
+-- header_image index
+CREATE INDEX header_image_index ON game(header_image);
+
+-- view that contains all attributes
+DROP VIEW IF EXISTS attributes_view;
+
+CREATE VIEW attributes_view AS
+SELECT
+    'category' AS type,
+    category_id AS id,
+    category_name AS name
+FROM categories
+UNION
+SELECT
+    'genre' AS type,
+    genre_id AS id,
+    genre_name AS name
+FROM genres
+UNION
+SELECT
+    'tag' AS type,
+    tag_id AS id,
+    tag_name AS name
+FROM tags
+UNION
+SELECT
+    'lang' AS type,
+    lang_id AS id,
+    lang AS name
+FROM supp_langs
+UNION
+SELECT
+    'audio_lang' AS type,
+    audio_lang_id AS id,
+    audio_lang AS name
+FROM supp_audio_langs
+UNION
+SELECT
+    'developer' AS type,
+    dev_id AS id,
+    dev_name AS name
+FROM developers
+UNION
+SELECT
+    'publisher' AS type,
+    pub_id AS id,
+    pub_name AS name
+FROM publishers
+ORDER BY type, name;
+
+-- procedure to get games by all attributes
+DROP PROCEDURE IF EXISTS sp_get_games_by_all_limit;
+
+CREATE PROCEDURE sp_get_games_by_all_limit(
+    IN category_ids VARCHAR(255), 
+    IN genre_ids VARCHAR(255),
+    IN tag_ids VARCHAR(255),
+    IN lang_ids VARCHAR(255),
+    IN audio_lang_ids VARCHAR(255),
+    IN dev_ids VARCHAR(255),
+    IN pub_ids VARCHAR(255),
+    IN limit_num INT,
+    IN offset_num INT
+)
+
+BEGIN
+    DECLARE category_cnt INT DEFAULT 0;
+    DECLARE genre_cnt INT DEFAULT 0;
+    DECLARE tag_cnt INT DEFAULT 0;
+    DECLARE lang_cnt INT DEFAULT 0;
+    DECLARE audio_lang_cnt INT DEFAULT 0;
+    DECLARE dev_cnt INT DEFAULT 0;
+    DECLARE pub_cnt INT DEFAULT 0;
+
+    IF TRIM(category_ids) <> '' THEN
+        SET category_cnt = (LENGTH(category_ids) - LENGTH(REPLACE(category_ids, ',', '')) + 1);
+    END IF;
+
+    IF TRIM(genre_ids) <> '' THEN
+        SET genre_cnt = (LENGTH(genre_ids) - LENGTH(REPLACE(genre_ids, ',', '')) + 1);
+    END IF;
+
+    IF TRIM(tag_ids) <> '' THEN
+        SET tag_cnt = (LENGTH(tag_ids) - LENGTH(REPLACE(tag_ids, ',', '')) + 1);
+    END IF;
+
+    IF TRIM(lang_ids) <> '' THEN
+        SET lang_cnt = (LENGTH(lang_ids) - LENGTH(REPLACE(lang_ids, ',', '')) + 1);
+    END IF;
+
+    IF TRIM(audio_lang_ids) <> '' THEN
+        SET audio_lang_cnt = (LENGTH(audio_lang_ids) - LENGTH(REPLACE(audio_lang_ids, ',', '')) + 1);
+    END IF;
+
+    IF TRIM(dev_ids) <> '' THEN
+        SET dev_cnt = (LENGTH(dev_ids) - LENGTH(REPLACE(dev_ids, ',', '')) + 1);
+    END IF;
+
+    IF TRIM(pub_ids) <> '' THEN
+        SET pub_cnt = (LENGTH(pub_ids) - LENGTH(REPLACE(pub_ids, ',', '')) + 1);
+    END IF;
+
+    SET @dynamicQuery := 'SELECT g.* FROM game g ';
+
+    IF category_cnt > 0 THEN
+        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_categories WHERE category_id IN (', category_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT category_id) = ', category_cnt, ') gc ON g.game_id = gc.game_id ');
+    END IF;
+
+    IF genre_cnt > 0 THEN
+        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_genres WHERE genre_id IN (', genre_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT genre_id) = ', genre_cnt, ') gg ON g.game_id = gg.game_id ');
+    END IF;
+
+    IF tag_cnt > 0 THEN
+        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_tags WHERE tag_id IN (', tag_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT tag_id) = ', tag_cnt, ') gt ON g.game_id = gt.game_id ');
+    END IF;
+
+    IF lang_cnt > 0 THEN
+        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_langs WHERE lang_id IN (', lang_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT lang_id) = ', lang_cnt, ') gl ON g.game_id = gl.game_id ');
+    END IF;
+
+    IF audio_lang_cnt > 0 THEN
+        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_audio_langs WHERE audio_lang_id IN (', audio_lang_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT audio_lang_id) = ', audio_lang_cnt, ') gal ON g.game_id = gal.game_id ');
+    END IF;
+
+    IF dev_cnt > 0 THEN
+        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_developers WHERE dev_id IN (', dev_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT dev_id) = ', dev_cnt, ') gd ON g.game_id = gd.game_id ');
+    END IF;
+
+    IF pub_cnt > 0 THEN
+        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_publishers WHERE pub_id IN (', pub_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT pub_id) = ', pub_cnt, ') gp ON g.game_id = gp.game_id ');
+    END IF;
+
+    IF category_cnt = 0 AND genre_cnt = 0 AND tag_cnt = 0 AND lang_cnt = 0 AND audio_lang_cnt = 0 AND dev_cnt = 0 AND pub_cnt = 0 THEN
+        SET @dynamicQuery := CONCAT(@dynamicQuery, 'WHERE 1=1');
+    END IF;
+
+    SET @dynamicQuery := CONCAT(@dynamicQuery, ' LIMIT ', limit_num, ' OFFSET ', offset_num);
+
+    PREPARE stmt FROM @dynamicQuery;
+    EXECUTE stmt;
+    DEALLOCATE PREPARE stmt;
+END;

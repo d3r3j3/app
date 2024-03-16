@@ -3,13 +3,17 @@ from typing import List, Optional
 import datetime
 import mysql.connector
 
-# Procedures
+# Procedures, Functions, Views, and CONSTANTS
+VIEW_ATTRIBUTES = 'attributes_view'
 FUNC_AUTHENTICATE = 'authenticate'
 FUNC_HAS_PURCHASED = 'has_purchased'
 PROC_CHANGE_PASSWORD = 'sp_change_password'
 PROC_ADD_USER = 'sp_add_user'
+PROC_DELETE_USER = 'sp_delete_user'
+PROC_UPDATE_USER_ROLE = 'sp_update_user_role'
 PROC_GET_GAME_INFO = 'sp_get_game_info'
 PROC_MAKE_PURCHASE = 'sp_make_purchase'
+PROC_GET_GAMES_BY_ALL_LIMIT = 'sp_get_games_by_all_limit'
 DEFAULT_ROLE = 'user'
 
 def get_supported_platforms(bin_str: str) -> List[str]:
@@ -133,7 +137,7 @@ class GameInfo(BaseModel):
                 cursor.callproc(PROC_MAKE_PURCHASE, (user_id, self.game_id))
                 conn.commit()
         except mysql.connector.Error as err:
-            print("Purchase Game Err: ", err)
+            print(err)
             return None
         
         return self
@@ -168,6 +172,49 @@ class Games(BaseModel):
                 games.append(game)
         
         return Games(games=games)
+    
+    def get_games_by_all_limit(self, conn: mysql.connector.MySQLConnection,
+                               category_ids_str: str = "", genre_ids_str: str = "", tag_ids_str: str = "",
+                                 lang_ids_str: str = "", audio_lang_ids_str: str = "", dev_ids_str: str = "",
+                                    pub_ids_str: str = "", limit: int = 10, offset: int = 0) -> 'Games':
+        
+        query = f"""
+                CALL {PROC_GET_GAMES_BY_ALL_LIMIT}( 
+                    '{category_ids_str}', 
+                    '{genre_ids_str}', 
+                    '{tag_ids_str}', 
+                    '{lang_ids_str}', 
+                    '{audio_lang_ids_str}', 
+                    '{dev_ids_str}', 
+                    '{pub_ids_str}', 
+                    {limit}, 
+                    {offset}
+                );
+                """
+        
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+                games = []
+                for row in rows:
+                    game = Game(
+                        game_id=row[0],
+                        game_name=row[1],
+                        release_date=row[2],
+                        estimated_owners=row[3],
+                        price_usd=row[4],
+                        about_game=row[5],
+                        metacritic_score=row[6],
+                        platform_support=get_supported_platforms(row[7]) if row[7] else None,
+                        header_image=row[8]
+                    )
+                    games.append(game)
+
+            return Games(games=games)
+        except mysql.connector.Error as err:
+            print(err)
+            return None
 
 class User(BaseModel):
     user_id: Optional[int] = None
@@ -184,68 +231,46 @@ class User(BaseModel):
         query = """
                 SELECT * FROM user WHERE user_id = %s;
                 """ % (params)
-        
-        with conn.cursor() as cursor:
-            cursor.execute(query)
-            row = cursor.fetchone()
-            if row:
-                user = User(
-                    user_id=row[0],
-                    username=row[1],
-                    balance=row[2],
-                    password_hash=row[3],
-                    salt=row[4],
-                    user_role=row[5],
-                    date_joined=row[6]
-                )
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                row = cursor.fetchone()
+                if row:
+                    user = User(
+                        user_id=row[0],
+                        username=row[1],
+                        balance=row[2],
+                        password_hash=row[3],
+                        salt=row[4],
+                        user_role=row[5],
+                        date_joined=row[6]
+                    )
 
-                return user
-            else:
-                return None
+                    return user
+                else:
+                    return None
+        except mysql.connector.Error as err:
+            print(err)
+            return None
             
     def auth_user(self, conn: mysql.connector.MySQLConnection, password: str) -> 'User':
         if not self.username or not password:
             return None
 
-        with conn.cursor() as cursor:
-            cursor.execute(f"SELECT {FUNC_AUTHENTICATE}(%s, %s);", (self.username, password))
-            row = cursor.fetchone()
-            if not row:
-                return None
-
-            cursor.execute(f"SELECT * FROM user WHERE username = %s;", (self.username,))
-            row = cursor.fetchone()
-
-            if not row:
-                return None
-            
-            user = User(
-                user_id=row[0],
-                username=row[1],
-                user_role=row[5],
-            )
-
-            return user
-            
-    def create_user(self, conn: mysql.connector.MySQLConnection, password: str) -> 'User':
-        if not self.username or not password:
-            return None
-
-        with conn.cursor() as cursor:
-            cursor.execute(f"SELECT * FROM user WHERE username = %s;", (self.username,))
-            row = cursor.fetchone()
-            if row:
-                return None
-            else:
-                cursor.callproc(PROC_ADD_USER, (self.username, password, DEFAULT_ROLE))
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(f"SELECT {FUNC_AUTHENTICATE}(%s, %s);", (self.username, password))
+                row = cursor.fetchone()
+                
+                if row is None or row[0] == 0:
+                    return None
 
                 cursor.execute(f"SELECT * FROM user WHERE username = %s;", (self.username,))
                 row = cursor.fetchone()
-                conn.commit()
 
                 if not row:
                     return None
-
+                
                 user = User(
                     user_id=row[0],
                     username=row[1],
@@ -253,6 +278,40 @@ class User(BaseModel):
                 )
 
                 return user
+        except mysql.connector.Error as err:
+            print(err)
+            return None
+            
+    def create_user(self, conn: mysql.connector.MySQLConnection, password: str) -> 'User':
+        if not self.username or not password:
+            return None
+        
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(f"SELECT * FROM user WHERE username = %s;", (self.username,))
+                row = cursor.fetchone()
+                if row is not None:
+                    return None
+                else:
+                    cursor.callproc(PROC_ADD_USER, (self.username, password, DEFAULT_ROLE))
+
+                    cursor.execute(f"SELECT * FROM user WHERE username = %s;", (self.username,))
+                    row = cursor.fetchone()
+                    conn.commit()
+
+                    if row is None:
+                        return None
+
+                    user = User(
+                        user_id=row[0],
+                        username=row[1],
+                        user_role=row[5],
+                    )
+
+                    return user
+        except mysql.connector.Error as err:
+            print(err)
+            return None
             
     def change_password(self, conn: mysql.connector.MySQLConnection, password: str) -> 'User':
         if not self.user_id or not self.username or not password:
@@ -261,6 +320,40 @@ class User(BaseModel):
         try:
             with conn.cursor() as cursor:
                 cursor.callproc(PROC_CHANGE_PASSWORD, (self.username, password))
+                conn.commit()
+        except mysql.connector.Error as err:
+            print(err)
+            return None
+        
+        return self
+    
+    def delete_user(self, conn: mysql.connector.MySQLConnection, my_role: str) -> 'User':
+        if my_role != 'admin':
+            return None
+        
+        if not self.username:
+            return None
+        
+        try:
+            with conn.cursor() as cursor:
+                cursor.callproc(PROC_DELETE_USER, (self.username, my_role,))
+                conn.commit()
+        except mysql.connector.Error as err:
+            print(err)
+            return None
+        
+        return self
+    
+    def update_user_role(self, conn: mysql.connector.MySQLConnection, my_role: str) -> 'User':
+        if my_role != 'admin':
+            return None
+        
+        if not self.username or not self.user_role:
+            return None
+        
+        try:
+            with conn.cursor() as cursor:
+                cursor.callproc(PROC_UPDATE_USER_ROLE, (self.username, self.user_role,))
                 conn.commit()
         except mysql.connector.Error as err:
             print(err)
@@ -279,23 +372,27 @@ class Users(BaseModel):
                 SELECT * FROM user LIMIT %s OFFSET %s;
                 """ % (limit, offset)
         
-        with conn.cursor() as cursor:
-            cursor.execute(query)
-            rows = cursor.fetchall()
-            users = []
-            for row in rows:
-                user = User(
-                    user_id=row[0],
-                    username=row[1],
-                    balance=row[2],
-                    password_hash=row[3],
-                    salt=row[4],
-                    user_role=row[5],
-                    date_joined=row[6]
-                )
-                users.append(user)
-        
-        return Users(users=users)
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+                users = []
+                for row in rows:
+                    user = User(
+                        user_id=row[0],
+                        username=row[1],
+                        balance=row[2],
+                        password_hash=row[3],
+                        salt=row[4],
+                        user_role=row[5],
+                        date_joined=row[6]
+                    )
+                    users.append(user)
+            
+            return Users(users=users)
+        except mysql.connector.Error as err:
+            print(err)
+            return None
     
 class Purchase(BaseModel):
     purchase_id: Optional[int] = None
@@ -458,5 +555,83 @@ class UserPurchases(BaseModel):
             except mysql.connector.Error as err:
                 print(err)
                 return None
-        
 
+class Attribute(BaseModel):
+    id: Optional[int] = None
+    name: Optional[str] = None
+    checked: Optional[bool] = False
+class Attributes(BaseModel):
+    genres: Optional[List[Attribute]] = None
+    categories: Optional[List[Attribute]] = None
+    tags: Optional[List[Attribute]] = None
+    languages: Optional[List[Attribute]] = None
+    audio_languages: Optional[List[Attribute]] = None
+    developers: Optional[List[Attribute]] = None
+    publishers: Optional[List[Attribute]] = None
+
+    def get_attributes(self, conn: mysql.connector.MySQLConnection) -> 'Attributes':
+        query = f"""
+                SELECT * FROM {VIEW_ATTRIBUTES};
+                """
+        
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+                genres = []
+                categories = []
+                tags = []
+                languages = []
+                audio_languages = []
+                developers = []
+                publishers = []
+
+                for row in rows:
+                    if row[0] == 'genre':
+                        genres.append({
+                            'id': row[1],
+                            'name': row[2]
+                        })
+                    elif row[0] == 'category':
+                        categories.append({
+                            'id': row[1],
+                            'name': row[2]
+                        })
+                    elif row[0] == 'tag':
+                        tags.append({
+                            'id': row[1],
+                            'name': row[2]
+                        })
+                    elif row[0] == 'lang':
+                        languages.append({
+                            'id': row[1],
+                            'name': row[2]
+                        })
+                    elif row[0] == 'audio_lang':
+                        audio_languages.append({
+                            'id': row[1],
+                            'name': row[2]
+                        })
+                    elif row[0] == 'developer':
+                        developers.append({
+                            'id': row[1],
+                            'name': row[2]
+                        })
+                    elif row[0] == 'publisher':
+                        publishers.append({
+                            'id': row[1],
+                            'name': row[2]
+                        })
+
+                return Attributes(
+                    genres=genres,
+                    categories=categories,
+                    tags=tags,
+                    languages=languages,
+                    audio_languages=audio_languages,
+                    developers=developers,
+                    publishers=publishers
+                )
+        except mysql.connector.Error as err:
+            print(err)
+            return None

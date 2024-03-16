@@ -52,7 +52,6 @@
                             <tr>
                                 <th scope="col">Username</th>
                                 <th scope="col">Role</th>
-                                <th scope="col">Balance</th>
                                 <th scope="col">Update Role</th>
                                 <th scope="col">Delete Account</th>
                             </tr>
@@ -62,9 +61,8 @@
                                 <tr>
                                     <td>{{ u.username }}</td>
                                     <td>{{ u.user_role }}</td>
-                                    <td>{{ u.balance }}</td>
                                     <td>
-                                        <form action="#" method="post" class="row">
+                                        <form action="{{ url_for('change_role') }}" method="post" class="row">
                                             <select name="role" class="form-control form-control-sm" style="width: 50%">
                                                 <option value="user">user</option>
                                                 <option value="admin">admin</option>
@@ -74,7 +72,7 @@
                                         </form>
                                     </td>
                                     <td>
-                                        <form action="#" method="post">
+                                        <form action="{{ url_for('delete_user' )}}" method="post">
                                             <button type="submit" class="btn btn-primary btn-sm">Delete Account</button>
                                             <input type="hidden" name="username" value="{{ u.username }}">
                                         </form>

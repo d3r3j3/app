@@ -9,7 +9,7 @@
             <a class="nav-link" href="{{ url_for('home', page=0) }}">Home</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('mygames') }}">My Games</a>
+            <a class="nav-link" href="{{ url_for('mygames', page=0) }}">My Games</a>
           </li>
         </ul>
     </div>
@@ -81,6 +81,26 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                    <nav>
+                        <ul class="pagination
+                            justify-content-center
+                        ">
+                            <li class="page-item
+                                {% if page == 0 %}
+                                    disabled
+                                {% endif %}
+                            ">
+                                <a class="page-link" href=" {{ url_for('account', page=prev_page) }} ">Previous</a>
+                            </li>
+                            <li class="page-item
+                                {% if next_page == page %}
+                                    disabled
+                                {% endif %}
+                            ">
+                                <a class="page-link" href=" {{ url_for('account', page=next_page)}} ">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
                 </div>
             {% endif %}
         </div>

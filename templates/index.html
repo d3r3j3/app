@@ -9,14 +9,14 @@
             <a class="nav-link" href="{{ url_for('home', page=0) }}">Home</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" href="{{ url_for('mygames') }}">My Games</a>
+            <a class="nav-link" href="{{ url_for('mygames', page=0) }}">My Games</a>
           </li>
         </ul>
     </div>
     <div class="navbar">
         <ul class="navbar-nav">
             <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('account') }}">Welcome, {{ user.username }}</a>
+                <a class="nav-link" href="{{ url_for('account', page=0) }}">Welcome, {{ user.username }}</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>

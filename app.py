@@ -360,22 +360,28 @@ async def game(game_id: int, request: Request, user: dict = Depends(get_current_
         }
     )
 
-@app.get("/mygames")
-async def mygames(request: Request, user: dict = Depends(get_current_user)):
+@app.get("/mygames/{page}")
+async def mygames(request: Request, page: int=0, user: dict = Depends(get_current_user)):
     app.db_conn = get_conn()
-    games = UserPurchases(user_id=user["user_id"]).get_user_purchases(app.db_conn, user["user_id"])
+    games = UserPurchases(user_id=user["user_id"]).get_user_purchases(
+        app.db_conn, user["user_id"],
+        limit=10, offset=page*10
+    )
 
     return templates.TemplateResponse(
         "mygames.html",
         {
             "request": request,
             "user": user,
-            "purchases": games
+            "purchases": games,
+            "prev_page": page - 1 if page > 0 else 0,
+            "next_page": page + 1 if len(games) == 10 else page,
+            "page": page
         }
     )
 
-@app.get("/account")
-async def account(request: Request, user: dict = Depends(get_current_user)):
+@app.get("/account/{page}")
+async def account(request: Request, page: int=0, user: dict = Depends(get_current_user)):
     app.db_conn = get_conn()
     account = User(user_id=user["user_id"]).get_user(app.db_conn)
 
@@ -390,7 +396,10 @@ async def account(request: Request, user: dict = Depends(get_current_user)):
                 "request": request,
                 "user": user,
                 "acnt": account,
-                "users": users.users
+                "users": users.users,
+                "page": page,
+                "prev_page": page - 1 if page > 0 else 0,
+                "next_page": page + 1 if len(users.users) == 10 else page
             }
         )
 
@@ -434,7 +443,7 @@ async def change_role(request: Request, user: dict = Depends(get_current_user), 
     temp_user = User(user_role=role, username=username).update_user_role(conn_admin, user["user_role"])
     conn_admin.close()
 
-    return RedirectResponse(url="/account", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/account/0", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.post("/delete_user")
 async def delete_user(request: Request, user: dict = Depends(get_current_user), username: str = Form(...)):
@@ -443,7 +452,7 @@ async def delete_user(request: Request, user: dict = Depends(get_current_user), 
     temp_user = User(username=username).delete_user(conn_admin, user["user_role"])
     conn_admin.close()
 
-    return RedirectResponse(url="/account", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/account/0", status_code=status.HTTP_303_SEE_OTHER)
 
 @app.post("/purchase_game")
 async def purchase_game(request: Request, game_id: int = Form(...), user: dict = Depends(get_current_user)):
@@ -465,7 +474,7 @@ async def purchase_game(request: Request, game_id: int = Form(...), user: dict =
             }
         )
     
-    return RedirectResponse(url="/mygames", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(url="/mygames/0", status_code=status.HTTP_303_SEE_OTHER)
 
 
 # run the app

@@ -3,6 +3,7 @@ DROP DATABASE IF exists games;
 CREATE DATABASE games;
 USE games;
 
+ALTER DATABASE games CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 -- Drop tables if they exist
 DROP TABLE IF EXISTS game;
 DROP TABLE IF EXISTS user;
@@ -44,10 +45,10 @@ CREATE TABLE game (
     PRIMARY KEY (game_id, game_name)
 );
 
--- Alter table to support utf8mb4 encoding (for emoji support)
--- database connection must be set to utf8mb4 to support emoji
-ALTER TABLE game
-CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- -- Alter table to support utf8mb4 encoding (for emoji support)
+-- -- database connection must be set to utf8mb4 to support emoji
+-- ALTER TABLE game
+-- CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Table containing game videos
 CREATE TABLE game_videos (
@@ -172,10 +173,10 @@ CREATE TABLE developers (
     dev_name VARCHAR(255) UNIQUE
 );
 
--- Alter table to support utf8mb4 encoding (for emoji support)
--- database connection must be set to utf8mb4 to support emoji
-ALTER TABLE developers 
-CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- -- Alter table to support utf8mb4 encoding (for emoji support)
+-- -- database connection must be set to utf8mb4 to support emoji
+-- ALTER TABLE developers 
+-- CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Junction table for relation between developers and games
 CREATE TABLE game_developers (
@@ -193,10 +194,10 @@ CREATE TABLE publishers (
     pub_name VARCHAR(255) UNIQUE
 );
 
--- Alter table to support utf8mb4 encoding (for emoji support)
--- database connection must be set to utf8mb4 to support emoji
-ALTER TABLE publishers
-CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- -- Alter table to support utf8mb4 encoding (for emoji support)
+-- -- database connection must be set to utf8mb4 to support emoji
+-- ALTER TABLE publishers
+-- CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Junction table for relation between publishers and games
 CREATE TABLE game_publishers (

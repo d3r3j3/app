@@ -3,18 +3,6 @@ DROP DATABASE IF exists games;
 CREATE DATABASE games;
 USE games;
 
--- Drop users if they exist
-DROP USER IF EXISTS 'admin'@'localhost';
-DROP USER IF EXISTS 'client'@'localhost';
-
--- Create admin and client user
-CREATE USER 'admin'@'localhost' IDENTIFIED BY 'admin';
-CREATE USER 'client'@'localhost' IDENTIFIED BY 'client';
-
--- Grant privileges to admin and client user
-GRANT ALL PRIVILEGES ON games.* TO 'admin'@'localhost';
-GRANT SELECT, INSERT, UPDATE, DELETE ON games.* TO 'client'@'localhost';
-
 -- Drop tables if they exist
 DROP TABLE IF EXISTS game;
 DROP TABLE IF EXISTS user;
@@ -63,26 +51,17 @@ CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Table containing game videos
 CREATE TABLE game_videos (
+    -- unqiue game ID
     game_id INT,
+    -- url that links to video for gameplay/trailer
     video_url VARCHAR(255),
     PRIMARY KEY (game_id, video_url),
     FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
 );
 
--- Table containing User/Client information
-CREATE TABLE user (
-    user_id INT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(255) UNIQUE NOT NULL,
-    balance DECIMAL(10, 2) DEFAULT 200.00,
-    password_hash BINARY(64) NOT NULL,
-    salt CHAR(8) NOT NULL,
-    -- user role (admin, user, etc)
-    user_role VARCHAR(10) NOT NULL DEFAULT 'user',
-    date_joined DATE
-); 
-
 -- Table containing purchases made by users
 CREATE TABLE purchases (
+    -- unqiue purchase ID for game purchased by user
     purchase_id INT PRIMARY KEY AUTO_INCREMENT,
     user_id INT,
     game_id INT,
@@ -93,7 +72,9 @@ CREATE TABLE purchases (
 
 -- Contains single category for each game
 CREATE TABLE categories (
+    -- Unique category ID corresponding to category name
     category_id INT PRIMARY KEY AUTO_INCREMENT,
+    -- category name (ex: Co-op, PVP)
     category_name VARCHAR(255) UNIQUE
 );
 
@@ -107,7 +88,9 @@ CREATE TABLE game_categories (
 
 -- Contains single genre for each game
 CREATE TABLE genres (
+    -- Unqiue genre ID corresponding to genre name
     genre_id INT PRIMARY KEY AUTO_INCREMENT,
+    -- genre name (ex: Horror, Action)
     genre_name VARCHAR(255) UNIQUE
 );
 
@@ -121,7 +104,9 @@ CREATE TABLE game_genres (
 
 -- Contains all unique tags
 CREATE TABLE tags (
+    -- Unqiue tag ID corresponding to tag name
     tag_id INT PRIMARY KEY AUTO_INCREMENT,
+    -- tag name (ex: Pixel graphics, Science, Shoot 'Em Up)
     tag_name VARCHAR(255) UNIQUE
 );
 
@@ -135,7 +120,9 @@ CREATE TABLE game_tags (
 
 -- Contains all unique languages
 CREATE TABLE supp_langs (
+    -- Unqiue language ID corresponding to text language in-game
     lang_id INT PRIMARY KEY AUTO_INCREMENT,
+    -- name of language used in game for text (ex: French, Spanish)
     lang VARCHAR(255) UNIQUE
 );
 
@@ -149,7 +136,9 @@ CREATE TABLE game_langs (
 
 -- Contains all unique audio languages
 CREATE TABLE supp_audio_langs (
+    -- Unqiue language ID corresponding to in game audio language
     audio_lang_id INT PRIMARY KEY AUTO_INCREMENT,
+    -- name of language used for in-game audio
     audio_lang VARCHAR(255) UNIQUE
 );
 
@@ -164,7 +153,9 @@ CREATE TABLE game_audio_langs (
 
 -- Contains all unique developers
 CREATE TABLE developers (
+    -- Unqiue developer ID corresponding to developer name
     dev_id INT PRIMARY KEY AUTO_INCREMENT,
+    -- developer name (ex: raven studios)
     dev_name VARCHAR(255) UNIQUE
 );
 
@@ -183,7 +174,9 @@ CREATE TABLE game_developers (
 
 -- Contains all unique publishers
 CREATE TABLE publishers (
+    -- Unqiue publisher ID corresponding to publisher name
     pub_id INT PRIMARY KEY AUTO_INCREMENT,
+    -- publisher name (ex: bad gremlin studios)
     pub_name VARCHAR(255) UNIQUE
 );
 
@@ -200,252 +193,6 @@ CREATE TABLE game_publishers (
     FOREIGN KEY (pub_id) REFERENCES publishers(pub_id) ON DELETE CASCADE
 );
 
--- Drop Procedures and Functions if they exist
-DROP FUNCTION IF EXISTS make_salt;
-DROP FUNCTION IF EXISTS authenticate;
-DROP PROCEDURE IF EXISTS sp_add_user;
-DROP PROCEDURE IF EXISTS sp_change_password;
-
--- Generate a random salt for the user
-
-DELIMITER !
-CREATE FUNCTION make_salt(num_chars INT)
-RETURNS VARCHAR(20) NOT DETERMINISTIC
-BEGIN
-    DECLARE salt VARCHAR(20) DEFAULT '';
-
-    -- Don't want to generate more than 20 characters of salt.
-    SET num_chars = LEAST(20, num_chars);
-
-    -- Generate the salt!  Characters used are ASCII code 32 (space)
-    -- through 126 ('z').
-    WHILE num_chars > 0 DO
-        SET salt = CONCAT(salt, CHAR(32 + FLOOR(RAND() * 95)));
-        SET num_chars = num_chars - 1;
-    END WHILE;
-
-    RETURN salt;
-END !
-DELIMITER ;
-
--- Procedure to add a new user to the user table
-
-DELIMITER !
-CREATE PROCEDURE sp_add_user(
-    new_username VARCHAR(20), password VARCHAR(20), user_role VARCHAR(20))
-BEGIN
-    DECLARE new_salt CHAR(8);
-    DECLARE new_hash BINARY(64);
-
-    -- Generate a new salt and hash for the password.
-    SET new_salt = make_salt(8);
-    SET new_hash = SHA2(CONCAT(new_salt, password), 256);
-
-    -- Insert the new user into the table.
-    INSERT INTO user (username, password_hash, salt, user_role, date_joined)
-    VALUES (new_username, new_hash, new_salt, user_role, CURDATE());
-END !
-DELIMITER ;
-
--- Procedure to delete a user from the user table
-DROP PROCEDURE IF EXISTS sp_delete_user;
-
-DELIMITER !
-CREATE PROCEDURE sp_delete_user(
-    username VARCHAR(20), user_role VARCHAR(20))
-BEGIN
-    IF user_role = 'admin' THEN
-        DELETE FROM user WHERE user.username = username;
-    END IF;
-END !
-DELIMITER ;
-
--- Procedure to update a user's role
-DROP PROCEDURE IF EXISTS sp_update_user_role;
-
-DELIMITER !
-CREATE PROCEDURE sp_update_user_role(
-    username VARCHAR(20), new_role VARCHAR(20))
-BEGIN
-    UPDATE user
-    SET user_role = new_role
-    WHERE user.username = username;
-END !
-DELIMITER ;
-
--- Procedure to authenticate a user
-
-DELIMITER !
-CREATE FUNCTION authenticate(username VARCHAR(20), password VARCHAR(20))
-RETURNS TINYINT DETERMINISTIC
-BEGIN
-  DECLARE user_salt CHAR(8);
-  DECLARE user_hash BINARY(64);
-  DECLARE given_hash BINARY(64);
-
-  -- Get the salt and hash for the user.
-  SELECT salt, password_hash INTO user_salt, user_hash
-  FROM user
-  WHERE user.username = username;
-
-  -- If the user doesn't exist, return 0.
-  IF user_salt IS NULL THEN
-    RETURN 0;
-  END IF;
-
-  -- Hash the given password with the user's salt.
-  SET given_hash = SHA2(CONCAT(user_salt, password), 256);
-
-  -- Return 1 if the hashes match, 0 otherwise.
-  RETURN user_hash = given_hash;
-END !
-DELIMITER ;
-
--- Procedure to change a user's password
-
-DELIMITER !
-CREATE PROCEDURE sp_change_password(
-  username VARCHAR(20), new_password VARCHAR(20))
-BEGIN
-  DECLARE new_salt CHAR(8);
-  DECLARE new_hash BINARY(64);
-
-  -- Generate a new salt and hash for the password.
-  SET new_salt = make_salt(8);
-  SET new_hash = SHA2(CONCAT(new_salt, new_password), 256);
-
-  -- Update the user's salt and hash in the table.
-  UPDATE user
-  SET salt = new_salt, password_hash = new_hash
-  WHERE user.username = username;
-END !
-DELIMITER ;
-
--- Add admin user
-CALL sp_add_user('admin', 'admin', 'admin');
-
--- Function to check if game purchased by user
-DROP FUNCTION IF EXISTS has_purchased;
-
-DELIMITER !
-CREATE FUNCTION has_purchased(user_id INT, game_id INT)
-RETURNS TINYINT
-BEGIN
-    DECLARE purchased TINYINT;
-
-    SELECT COUNT(*) INTO purchased
-    FROM purchases
-    WHERE purchases.user_id = user_id AND purchases.game_id = game_id;
-
-    RETURN purchased;
-END !
-DELIMITER ;
-
--- Procedure to get all information about a game
-DROP PROCEDURE IF EXISTS sp_get_game_info;
-
-DELIMITER !
-CREATE PROCEDURE sp_get_game_info(game_id INT)
-BEGIN
-    CREATE TEMPORARY TABLE game_info AS
-    SELECT
-        game.game_id,
-        game.game_name,
-        game.release_date,
-        game.estimated_owners,
-        game.price_usd,
-        game.about_game,
-        game.metacritic_score,
-        game.platform_support,
-        game.header_image,
-        GROUP_CONCAT(DISTINCT game_videos.video_url) AS video_urls,
-        GROUP_CONCAT(DISTINCT categories.category_name) AS categories,
-        GROUP_CONCAT(DISTINCT genres.genre_name) AS genres,
-        GROUP_CONCAT(DISTINCT tags.tag_name) AS tags,
-        GROUP_CONCAT(DISTINCT supp_langs.lang) AS supported_langs,
-        GROUP_CONCAT(DISTINCT supp_audio_langs.audio_lang) AS supported_audio_langs,
-        GROUP_CONCAT(DISTINCT developers.dev_name) AS developers,
-        GROUP_CONCAT(DISTINCT publishers.pub_name) AS publishers
-    FROM game
-    NATURAL LEFT JOIN game_videos
-    NATURAL LEFT JOIN game_categories
-    NATURAL LEFT JOIN categories
-    NATURAL LEFT JOIN game_genres
-    NATURAL LEFT JOIN genres
-    NATURAL LEFT JOIN game_tags
-    NATURAL LEFT JOIN tags
-    NATURAL LEFT JOIN game_langs
-    NATURAL LEFT JOIN supp_langs
-    NATURAL LEFT JOIN game_audio_langs
-    NATURAL LEFT JOIN supp_audio_langs
-    NATURAL LEFT JOIN game_developers
-    NATURAL LEFT JOIN developers
-    NATURAL LEFT JOIN game_publishers
-    NATURAL LEFT JOIN publishers
-    WHERE game.game_id = game_id
-    GROUP BY 
-        game.game_id,
-        game.game_name,
-        game.release_date,
-        game.estimated_owners,
-        game.price_usd,
-        game.about_game,
-        game.metacritic_score,
-        game.platform_support,
-        game.header_image;
-
-    SELECT * FROM game_info;
-    DROP TEMPORARY TABLE game_info;
-END !
-DELIMITER ;
-
--- trigger to update the balance of the user after a purchase
-DROP TRIGGER IF EXISTS update_balance;
-
-DELIMITER !
-CREATE TRIGGER update_balance
-AFTER INSERT ON purchases
-FOR EACH ROW
-BEGIN
-    UPDATE user
-    SET balance = balance - (SELECT price_usd FROM game WHERE game_id = NEW.game_id)
-    WHERE user_id = NEW.user_id;
-END !
-DELIMITER ;
-
--- ufd to verify if a user has enough balance to make a purchase
-DROP FUNCTION IF EXISTS has_enough_balance;
-
-DELIMITER !
-CREATE FUNCTION has_enough_balance(user_id INT, game_id INT)
-RETURNS TINYINT
-BEGIN
-    DECLARE game_price DECIMAL(10, 2);
-    DECLARE user_balance DECIMAL(10, 2);
-
-    SELECT price_usd INTO game_price FROM game WHERE game.game_id = game_id;
-    SELECT balance INTO user_balance FROM user WHERE user.user_id = user_id;
-
-    IF user_balance >= game_price THEN
-        RETURN 1;
-    ELSE
-        RETURN 0;
-    END IF;
-END !
-DELIMITER ;
-
--- procedure to make a purchase
-DROP PROCEDURE IF EXISTS sp_make_purchase;
-
-DELIMITER !
-CREATE PROCEDURE sp_make_purchase(user_id INT, game_id INT)
-BEGIN
-    IF has_enough_balance(user_id, game_id) AND NOT has_purchased(user_id, game_id) THEN
-        INSERT INTO purchases (user_id, game_id, purchase_date)
-        VALUES (user_id, game_id, CURDATE());
-    END IF;
-END !
-DELIMITER ;
 
 -- header_image index
 CREATE INDEX header_image_index ON game(header_image);
@@ -453,6 +200,8 @@ CREATE INDEX header_image_index ON game(header_image);
 -- view that contains all attributes
 DROP VIEW IF EXISTS attributes_view;
 
+-- Consolidates categories, genres, tags, languages, audio languages, 
+-- developers, and publishers into a unified view, sorted by type and name.
 CREATE VIEW attributes_view AS
 SELECT
     'category' AS type,
@@ -496,97 +245,3 @@ SELECT
     pub_name AS name
 FROM publishers
 ORDER BY type, name;
-
--- procedure to get games by all attributes
-DROP PROCEDURE IF EXISTS sp_get_games_by_all_limit;
-
-DELIMITER !
-CREATE PROCEDURE sp_get_games_by_all_limit(
-    IN category_ids VARCHAR(255), 
-    IN genre_ids VARCHAR(255),
-    IN tag_ids VARCHAR(255),
-    IN lang_ids VARCHAR(255),
-    IN audio_lang_ids VARCHAR(255),
-    IN dev_ids VARCHAR(255),
-    IN pub_ids VARCHAR(255),
-    IN limit_num INT,
-    IN offset_num INT
-)
-BEGIN
-    DECLARE category_cnt INT DEFAULT 0;
-    DECLARE genre_cnt INT DEFAULT 0;
-    DECLARE tag_cnt INT DEFAULT 0;
-    DECLARE lang_cnt INT DEFAULT 0;
-    DECLARE audio_lang_cnt INT DEFAULT 0;
-    DECLARE dev_cnt INT DEFAULT 0;
-    DECLARE pub_cnt INT DEFAULT 0;
-
-    IF TRIM(category_ids) <> '' THEN
-        SET category_cnt = (LENGTH(category_ids) - LENGTH(REPLACE(category_ids, ',', '')) + 1);
-    END IF;
-
-    IF TRIM(genre_ids) <> '' THEN
-        SET genre_cnt = (LENGTH(genre_ids) - LENGTH(REPLACE(genre_ids, ',', '')) + 1);
-    END IF;
-
-    IF TRIM(tag_ids) <> '' THEN
-        SET tag_cnt = (LENGTH(tag_ids) - LENGTH(REPLACE(tag_ids, ',', '')) + 1);
-    END IF;
-
-    IF TRIM(lang_ids) <> '' THEN
-        SET lang_cnt = (LENGTH(lang_ids) - LENGTH(REPLACE(lang_ids, ',', '')) + 1);
-    END IF;
-
-    IF TRIM(audio_lang_ids) <> '' THEN
-        SET audio_lang_cnt = (LENGTH(audio_lang_ids) - LENGTH(REPLACE(audio_lang_ids, ',', '')) + 1);
-    END IF;
-
-    IF TRIM(dev_ids) <> '' THEN
-        SET dev_cnt = (LENGTH(dev_ids) - LENGTH(REPLACE(dev_ids, ',', '')) + 1);
-    END IF;
-
-    IF TRIM(pub_ids) <> '' THEN
-        SET pub_cnt = (LENGTH(pub_ids) - LENGTH(REPLACE(pub_ids, ',', '')) + 1);
-    END IF;
-
-    SET @dynamicQuery := 'SELECT g.* FROM game g ';
-
-    IF category_cnt > 0 THEN
-        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_categories WHERE category_id IN (', category_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT category_id) = ', category_cnt, ') gc ON g.game_id = gc.game_id ');
-    END IF;
-
-    IF genre_cnt > 0 THEN
-        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_genres WHERE genre_id IN (', genre_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT genre_id) = ', genre_cnt, ') gg ON g.game_id = gg.game_id ');
-    END IF;
-
-    IF tag_cnt > 0 THEN
-        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_tags WHERE tag_id IN (', tag_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT tag_id) = ', tag_cnt, ') gt ON g.game_id = gt.game_id ');
-    END IF;
-
-    IF lang_cnt > 0 THEN
-        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_langs WHERE lang_id IN (', lang_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT lang_id) = ', lang_cnt, ') gl ON g.game_id = gl.game_id ');
-    END IF;
-
-    IF audio_lang_cnt > 0 THEN
-        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_audio_langs WHERE audio_lang_id IN (', audio_lang_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT audio_lang_id) = ', audio_lang_cnt, ') gal ON g.game_id = gal.game_id ');
-    END IF;
-
-    IF dev_cnt > 0 THEN
-        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_developers WHERE dev_id IN (', dev_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT dev_id) = ', dev_cnt, ') gd ON g.game_id = gd.game_id ');
-    END IF;
-
-    IF pub_cnt > 0 THEN
-        SET @dynamicQuery := CONCAT(@dynamicQuery, 'JOIN (SELECT game_id FROM game_publishers WHERE pub_id IN (', pub_ids, ') GROUP BY game_id HAVING COUNT(DISTINCT pub_id) = ', pub_cnt, ') gp ON g.game_id = gp.game_id ');
-    END IF;
-
-    IF category_cnt = 0 AND genre_cnt = 0 AND tag_cnt = 0 AND lang_cnt = 0 AND audio_lang_cnt = 0 AND dev_cnt = 0 AND pub_cnt = 0 THEN
-        SET @dynamicQuery := CONCAT(@dynamicQuery, 'WHERE 1=1');
-    END IF;
-
-    SET @dynamicQuery := CONCAT(@dynamicQuery, ' LIMIT ', limit_num, ' OFFSET ', offset_num);
-
-    PREPARE stmt FROM @dynamicQuery;
-    EXECUTE stmt;
-    DEALLOCATE PREPARE stmt;
-END !
-DELIMITER ;

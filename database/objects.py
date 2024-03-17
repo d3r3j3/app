@@ -71,43 +71,48 @@ class GameInfo(BaseModel):
         has_purchased_query = f"SELECT {FUNC_HAS_PURCHASED}(%s, %s);"
         query = f"CALL {PROC_GET_GAME_INFO}(%s);"
         
-        with conn.cursor() as cursor:
-            cursor.execute(has_purchased_query, has_purchased_params)
-            row = cursor.fetchone()
-            purchased = False
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(has_purchased_query, has_purchased_params)
+                row = cursor.fetchone()
+                purchased = False
+                print("row1: ", row)
+                if row[0] > 0:
+                    purchased = True
+                
+                cursor.execute(query, (self.game_id,))
+                row = cursor.fetchone()
+                print("row", row)
+                if row:
+                    game_info = GameInfo(
+                        game_id=row[0],
+                        game_name=row[1],
+                        release_date=row[2],
+                        estimated_owners=row[3],
+                        price_usd=row[4],
+                        about_game=row[5],
+                        metacritic_score=row[6],
+                        platform_support=get_supported_platforms(row[7]) if row[7] 
+                                            else None,
+                        header_image=row[8],
+                        video_urls=row[9].split(',') if row[9] else None,
+                        categories=row[10].split(',') if row[10] else None,
+                        genres=row[11].split(',') if row[11] else None,
+                        tags=row[12].split(',') if row[12] else None,
+                        supported_langs=row[13].split(',') if row[13] else None,
+                        supported_audio_langas=row[14].split(',') if row[14] 
+                                            else None,
+                        developers=row[15].split(',') if row[15] else None,
+                        publishers=row[16].split(',') if row[16] else None,
+                        is_purchased=purchased
+                    )
 
-            if row[0] > 0:
-                purchased = True
-            
-            cursor.execute(query, (self.game_id,))
-            row = cursor.fetchone()
-            if row:
-                game_info = GameInfo(
-                    game_id=row[0],
-                    game_name=row[1],
-                    release_date=row[2],
-                    estimated_owners=row[3],
-                    price_usd=row[4],
-                    about_game=row[5],
-                    metacritic_score=row[6],
-                    platform_support=get_supported_platforms(row[7]) if row[7] 
-                                        else None,
-                    header_image=row[8],
-                    video_urls=row[9].split(',') if row[9] else None,
-                    categories=row[10].split(',') if row[10] else None,
-                    genres=row[11].split(',') if row[11] else None,
-                    tags=row[12].split(',') if row[12] else None,
-                    supported_langs=row[13].split(',') if row[13] else None,
-                    supported_audio_langas=row[14].split(',') if row[14] 
-                                        else None,
-                    developers=row[15].split(',') if row[15] else None,
-                    publishers=row[16].split(',') if row[16] else None,
-                    is_purchased=purchased
-                )
-
-                return game_info
-            else:
-                return None
+                    return game_info
+                else:
+                    return None
+        except mysql.connector.Error as err:
+            print(err)
+            return None
     
     # Purchase the game
     def purchase_game(self, conn: mysql.connector.MySQLConnection, 

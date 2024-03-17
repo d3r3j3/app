@@ -196,7 +196,7 @@ CREATE TABLE game_publishers (
 
 
 -- header_image index
-CREATE INDEX header_image_index ON game(header_image);
+CREATE INDEX idx_game_price_usd ON game(price_usd);
 
 -- view that contains all attributes
 DROP VIEW IF EXISTS attributes_view;

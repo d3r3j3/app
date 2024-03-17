@@ -1,6 +1,7 @@
 # Game Store Project - CS121
 ## How to run the project
 1. Clone the repository
+    - `git clone https://github.com/d3r3j3/app.git`
 2. Retrieve data csv files from the following link:
     - https://drive.google.com/drive/folders/1lVA9u-XAnb7lFG_pBJCIzIWN7MlLSQLw?usp=drive_link
 3. Place the csv files into the database/setup folder
@@ -22,7 +23,7 @@
     - Running the following command:
         - `python app.py`
 7. Now you can open your browser and go to the following link:
-    - `http://localhost:8080/`
+    - `http://localhost:8000/`
 8. You should now be able to use the application
 9. admin login:
     - username: admin

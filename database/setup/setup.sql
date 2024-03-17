@@ -47,11 +47,6 @@ CREATE TABLE game (
     PRIMARY KEY (game_id, game_name)
 );
 
--- -- Alter table to support utf8mb4 encoding (for emoji support)
--- -- database connection must be set to utf8mb4 to support emoji
--- ALTER TABLE game
--- CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 -- Table containing game videos
 CREATE TABLE game_videos (
     -- unqiue game ID
@@ -175,16 +170,6 @@ CREATE TABLE developers (
     dev_name VARCHAR(255) UNIQUE
 );
 
-<<<<<<< HEAD
--- Alter table to support utf8mb4 encoding (for emoji support)
--- database connection must be set to utf8mb4 to support emoji
-=======
--- -- Alter table to support utf8mb4 encoding (for emoji support)
--- -- database connection must be set to utf8mb4 to support emoji
->>>>>>> db7c299d84b2878c8b68b7dc7a12bffddbe6ac96
--- ALTER TABLE developers 
--- CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 -- Junction table for relation between developers and games
 CREATE TABLE game_developers (
     game_id INT,
@@ -200,16 +185,6 @@ CREATE TABLE publishers (
     -- publisher name (ex: bad gremlin studios)
     pub_name VARCHAR(255) UNIQUE
 );
-
-<<<<<<< HEAD
--- Alter table to support utf8mb4 encoding (for emoji support)
--- database connection must be set to utf8mb4 to support emoji
-=======
--- -- Alter table to support utf8mb4 encoding (for emoji support)
--- -- database connection must be set to utf8mb4 to support emoji
->>>>>>> db7c299d84b2878c8b68b7dc7a12bffddbe6ac96
--- ALTER TABLE publishers
--- CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Junction table for relation between publishers and games
 CREATE TABLE game_publishers (

@@ -4,18 +4,6 @@ DROP FUNCTION IF EXISTS authenticate;
 DROP PROCEDURE IF EXISTS sp_add_user;
 DROP PROCEDURE IF EXISTS sp_change_password;
 
--- Table containing User/Client information
-CREATE TABLE user (
-    user_id INT PRIMARY KEY AUTO_INCREMENT,
-    username VARCHAR(255) UNIQUE NOT NULL,
-    balance DECIMAL(10, 2) DEFAULT 200.00,
-    password_hash BINARY(64) NOT NULL,
-    salt CHAR(8) NOT NULL,
-    -- user role (admin, user, etc)
-    user_role VARCHAR(10) NOT NULL DEFAULT 'user',
-    date_joined DATE
-); 
-
 -- Generate a random salt for the user
 
 CREATE FUNCTION make_salt(num_chars INT)

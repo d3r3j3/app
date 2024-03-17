@@ -10,3 +10,4 @@ CREATE USER 'client'@'localhost' IDENTIFIED BY 'client';
 GRANT ALL PRIVILEGES ON games.* TO 'admin'@'localhost';
 GRANT SELECT, INSERT, UPDATE, DELETE ON games.* TO 'client'@'localhost';
 
+FLUSH PRIVILEGES;

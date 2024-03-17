@@ -11,7 +11,7 @@ def connect_to_database(username: str = 'root', password: str = 'root', host: st
                 password=password,
                 host=host,
                 database=database,
-                allow_local_infile=True
+                allow_local_infile=True,
             )
         else:
             conn = mysql.connector.connect(
@@ -79,10 +79,28 @@ def run_parser():
     # conn.commit()
     # conn.close()
 
+def run_load_data():
+    # connect to the database "games" as root
+    conn = connect_to_database(username='root', password='root', host='localhost', database='games')
+
+    # create a cursor object
+    cursor = conn.cursor()
+
+    # load the data from the csv files into the database
+    with open('load-data.sql') as f:
+        cursor.execute(f.read(), multi=True)
+
+    # commit the changes
+    conn.commit()
+
+    # close the connection
+    conn.close()
+
 
 def main():
-    run_setup()
-    run_parser()  
+    # run_setup()
+    # run_parser()  
+    run_load_data()
 
 if __name__ == '__main__':
     main()

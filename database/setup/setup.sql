@@ -59,6 +59,18 @@ CREATE TABLE game_videos (
     FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE
 );
 
+-- Table containing User/Client information
+CREATE TABLE user (
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    balance DECIMAL(10, 2) DEFAULT 200.00,
+    password_hash BINARY(64) NOT NULL,
+    salt CHAR(8) NOT NULL,
+    -- user role (admin, user, etc)
+    user_role VARCHAR(10) NOT NULL DEFAULT 'user',
+    date_joined DATE
+); 
+
 -- Table containing purchases made by users
 CREATE TABLE purchases (
     -- unqiue purchase ID for game purchased by user
@@ -83,7 +95,8 @@ CREATE TABLE game_categories (
     game_id INT,
     category_id INT,
     FOREIGN KEY (game_id) REFERENCES game(game_id) ON DELETE CASCADE,
-    FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE CASCADE
+    FOREIGN KEY (category_id) REFERENCES categories(category_id) 
+    ON DELETE CASCADE
 );
 
 -- Contains single genre for each game

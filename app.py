@@ -29,7 +29,14 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from database.db import get_conn
-from database.objects import Attributes, Game, Games, User, GameInfo, UserPurchases, Users
+from database.objects import (
+    Attributes, 
+    Games, 
+    User, 
+    GameInfo, 
+    UserPurchases, 
+    Users
+)
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -70,11 +77,14 @@ class OAuth2PasswordBearerWithCookie():
 oauth2scheme = OAuth2PasswordBearerWithCookie()
 
 
-# override 401 error
+# override 400s and 500s to redirect to login
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
     print(exc.status_code, exc.detail)
-    response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse(
+        url="/login", 
+        status_code=status.HTTP_303_SEE_OTHER
+    )
     response.delete_cookie("Authorization")
     return response
 
@@ -89,12 +99,18 @@ async def shutdown_event():
     app.db_conn.close()
 
 # create token
-async def create_token(username: str, user_role: str = "user", user_id: int = None):
+async def create_token(
+        username: str, user_role: str = "user", user_id: int = None):
     if user_id is None:
         return None
     
     exp_time = datetime.now(timezone.utc) + timedelta(minutes=30)
-    payload = {"sub": username, "role": user_role, "id": user_id, "exp": exp_time}
+    payload = {
+        "sub": username, 
+        "role": user_role, 
+        "id": user_id, 
+        "exp": exp_time
+    }
     token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return token
 
@@ -125,7 +141,8 @@ async def get_current_user(token: str = Depends(oauth2scheme)):
 
 # token route
 @app.post("/login")
-async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(
+    request: Request, form_data: OAuth2PasswordRequestForm = Depends()):
     username = form_data.username
     password = form_data.password
 
@@ -387,7 +404,7 @@ async def account(request: Request, page: int=0, user: dict = Depends(get_curren
 
     if user["user_role"] == "admin":
         conn_admin = get_conn(user="admin", password="admin")
-        users = Users(users=[]).get_users(conn_admin)
+        users = Users(users=[]).get_users(conn_admin, limit=10, offset=page*10)
         conn_admin.close()
 
         return templates.TemplateResponse(

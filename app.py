@@ -25,8 +25,7 @@ TODO:
 """
 
 from fastapi import Depends, FastAPI, Form, HTTPException, Response, Query
-from pydantic import BaseModel
-from typing import List, Optional
+from typing import List
 from datetime import datetime, timedelta, timezone
 from database.db import get_conn
 from database.objects import (
@@ -39,7 +38,7 @@ from database.objects import (
 )
 from starlette.requests import Request
 from starlette.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from starlette import status
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -163,7 +162,10 @@ async def login(
 
     # go to home page
     home_url = f"/home/0"
-    response = RedirectResponse(url=home_url, status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse(
+        url=home_url, 
+        status_code=status.HTTP_303_SEE_OTHER
+    )
     response.set_cookie("Authorization", f"Bearer {token}")
     return response
 
@@ -181,7 +183,10 @@ async def create_account(request: Request, username: str=Form(), password: str=F
     user = User(username=username).create_user(admin_conn, password)
     admin_conn.close()
     if user is None:
-        return templates.TemplateResponse("register.html", {"request": request, "error": "User could not be created."})
+        return templates.TemplateResponse(
+            "register.html", 
+            {"request": request, "error": "User could not be created."}
+        )
     
     return templates.TemplateResponse("login.html", {"request": request})
 
@@ -196,16 +201,20 @@ async def register(request: Request):
 
 # main pages - should be protected
 @app.get("/")
-async def root(request: Request, response: Response, user: dict = Depends(get_current_user)):
+async def root(
+    request: Request, response: Response, 
+    user: dict = Depends(get_current_user)
+    ):
     response.status_code = 307
     response.headers["Location"] = "/home/0"
     return response
 
 @app.get("/home/{page}")
-async def home(request: Request, page: int = 0, user: dict = Depends(get_current_user),
-                genre: List[str] = Query([]), category: List[str] = Query([]),
-                tag: List[str] = Query([]), lang: List[str] = Query([]),
-                developer: List[str] = Query([]), publisher: List[str] = Query([])):
+async def home(
+    request: Request, page: int = 0, user: dict = Depends(get_current_user),
+    genre: List[str] = Query([]), category: List[str] = Query([]),
+    tag: List[str] = Query([]), lang: List[str] = Query([]),
+    developer: List[str] = Query([]), publisher: List[str] = Query([])):
     
     genres = ",".join(genre)
     categories = ",".join(category)
@@ -215,11 +224,16 @@ async def home(request: Request, page: int = 0, user: dict = Depends(get_current
     publishers = ",".join(publisher)
 
     no_filter = True
-    if genres != "" or categories != "" or tags != "" or langs != "" or developers != "" or publishers != "":
+    if (genres != "" or categories != "" or tags != "" or langs != "" or 
+        developers != "" or publishers != ""):
         no_filter = False
 
     if no_filter:
-        games = Games(games=[]).get_games(app.db_conn, limit=10, offset=page*10)
+        games = Games(games=[]).get_games(
+            app.db_conn, 
+            limit=10, 
+            offset=page*10
+        )
         attributes = Attributes(genres=[]).get_attributes(app.db_conn)
     else:
         conn_admin = get_conn(user="admin", password="admin") 
@@ -283,18 +297,23 @@ async def home(request: Request, page: int = 0, user: dict = Depends(get_current
             "prev_page": prev_url,
             "next_page": next_url,
             "genres": attributes.genres if attributes is not None else [] ,
-            "categories": attributes.categories if attributes is not None else [] ,
+            "categories": attributes.categories if attributes is not None 
+                            else [] ,
             "tags": attributes.tags if attributes is not None else [] ,
             "langs": attributes.languages if attributes is not None else [] ,
-            "audio_langs": attributes.audio_languages if attributes is not None else [] ,
-            "developers": attributes.developers if attributes is not None else [],
-            "publishers": attributes.publishers if attributes is not None else []
+            "audio_langs": attributes.audio_languages if attributes is not None 
+                            else [] ,
+            "developers": attributes.developers if attributes is not None 
+                            else [],
+            "publishers": attributes.publishers if attributes is not None 
+                            else []
          }
     )
 
 @app.post("/home/{page}")
 async def home_post(request: Request, user: dict = Depends(get_current_user),
-                    page: int = 0, genre: list = Form([]), category: list = Form([]),
+                    page: int = 0, genre: list = Form([]), 
+                    category: list = Form([]),
                     tag: list = Form([]), lang: list = Form([]),
                     developer: list = Form([]), publisher: list = Form([])):
 
@@ -363,7 +382,8 @@ async def home_post(request: Request, user: dict = Depends(get_current_user),
     
 
 @app.get("/games/{game_id}")
-async def game(game_id: int, request: Request, user: dict = Depends(get_current_user)):
+async def game(
+    game_id: int, request: Request, user: dict = Depends(get_current_user)):
     conn_admin = get_conn(user="admin", password="admin")
     game = GameInfo(game_id=game_id).get_game_info(conn_admin, user["user_id"])
     conn_admin.close()
@@ -378,7 +398,8 @@ async def game(game_id: int, request: Request, user: dict = Depends(get_current_
     )
 
 @app.get("/mygames/{page}")
-async def mygames(request: Request, page: int=0, user: dict = Depends(get_current_user)):
+async def mygames(
+    request: Request, page: int=0, user: dict = Depends(get_current_user)):
     app.db_conn = get_conn()
     games = UserPurchases(user_id=user["user_id"]).get_user_purchases(
         app.db_conn, user["user_id"],
@@ -398,7 +419,8 @@ async def mygames(request: Request, page: int=0, user: dict = Depends(get_curren
     )
 
 @app.get("/account/{page}")
-async def account(request: Request, page: int=0, user: dict = Depends(get_current_user)):
+async def account(
+    request: Request, page: int=0, user: dict = Depends(get_current_user)):
     app.db_conn = get_conn()
     account = User(user_id=user["user_id"]).get_user(app.db_conn)
 
@@ -431,9 +453,15 @@ async def account(request: Request, page: int=0, user: dict = Depends(get_curren
     )
 
 @app.post("/change_password")
-async def change_password(request: Request, user: dict = Depends(get_current_user), password: str = Form(...)):
+async def change_password(
+    request: Request, user: dict = Depends(get_current_user), 
+    password: str = Form(...)):
+
     conn_admin = get_conn(user="admin", password="admin")
-    temp_user = User(user_id=user["user_id"], username=user["username"]).change_password(conn_admin, password)
+    temp_user = User(
+        user_id=user["user_id"], 
+        username=user["username"]
+    ).change_password(conn_admin, password)
     conn_admin.close()
 
     account = User(user_id=user["user_id"]).get_user(app.db_conn)
@@ -450,31 +478,51 @@ async def change_password(request: Request, user: dict = Depends(get_current_use
         )
 
     # logout
-    response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    response = RedirectResponse(
+        url="/login", 
+        status_code=status.HTTP_303_SEE_OTHER
+    )
     response.set_cookie("Authorization", "")
     return response
 
 @app.post("/change_role")
-async def change_role(request: Request, user: dict = Depends(get_current_user), username: str = Form(...), role: str = Form(...)):
+async def change_role(request: Request, user: dict = Depends(get_current_user), 
+                      username: str = Form(...), role: str = Form(...)):
     conn_admin = get_conn(user="admin", password="admin")
-    temp_user = User(user_role=role, username=username).update_user_role(conn_admin, user["user_role"])
+    temp_user = User(user_role=role, username=username).update_user_role(
+        conn_admin, 
+        user["user_role"]
+    )
     conn_admin.close()
 
-    return RedirectResponse(url="/account/0", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url="/account/0", 
+        status_code=status.HTTP_303_SEE_OTHER
+    )
 
 @app.post("/delete_user")
-async def delete_user(request: Request, user: dict = Depends(get_current_user), username: str = Form(...)):
+async def delete_user(
+    request: Request, 
+    user: dict = Depends(get_current_user), 
+    username: str = Form(...)
+):
     print("USER: ", user)
     conn_admin = get_conn(user="admin", password="admin")
-    temp_user = User(username=username).delete_user(conn_admin, user["user_role"])
+    temp_user = User(username=username).delete_user(
+        conn_admin, user["user_role"])
     conn_admin.close()
 
-    return RedirectResponse(url="/account/0", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url="/account/0", 
+        status_code=status.HTTP_303_SEE_OTHER
+    )
 
 @app.post("/purchase_game")
-async def purchase_game(request: Request, game_id: int = Form(...), user: dict = Depends(get_current_user)):
+async def purchase_game(request: Request, game_id: int = Form(...), 
+                        user: dict = Depends(get_current_user)):
     conn_admin = get_conn(user="admin", password="admin")
-    purchase = GameInfo(game_id=game_id).purchase_game(conn_admin, user["user_id"])
+    purchase = GameInfo(game_id=game_id).purchase_game(conn_admin, 
+                                                       user["user_id"])
     conn_admin.close()
 
     if purchase is None:
@@ -491,7 +539,10 @@ async def purchase_game(request: Request, game_id: int = Form(...), user: dict =
             }
         )
     
-    return RedirectResponse(url="/mygames/0", status_code=status.HTTP_303_SEE_OTHER)
+    return RedirectResponse(
+        url="/mygames/0", 
+        status_code=status.HTTP_303_SEE_OTHER
+    )
 
 
 # run the app

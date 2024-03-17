@@ -16,6 +16,7 @@ PROC_MAKE_PURCHASE = 'sp_make_purchase'
 PROC_GET_GAMES_BY_ALL_LIMIT = 'sp_get_games_by_all_limit'
 DEFAULT_ROLE = 'user'
 
+# Transforms a binary string to a list of supported platforms
 def get_supported_platforms(bin_str: str) -> List[str]:
     platforms = []
     if bin_str[0] == '1':
@@ -26,6 +27,7 @@ def get_supported_platforms(bin_str: str) -> List[str]:
         platforms.append('Linux')
     return platforms
 
+# Game object to relate to the game table
 class Game(BaseModel):
     game_id: Optional[int] = None
     game_name: Optional[str] = None
@@ -37,33 +39,7 @@ class Game(BaseModel):
     platform_support: Optional[List[str]] = None
     header_image: Optional[str] = None
 
-    def get_game(self, conn: mysql.connector.MySQLConnection) -> 'Game':
-        params = (self.game_id,)
-
-        query = """
-                SELECT * FROM game WHERE game_id = %s;
-                """ % (params)
-        
-        with conn.cursor() as cursor:
-            cursor.execute(query)
-            row = cursor.fetchone()
-            if row:
-                game = Game(
-                    game_id=row[0],
-                    game_name=row[1],
-                    release_date=row[2],
-                    estimated_owners=row[3],
-                    price_usd=row[4],
-                    about_game=row[5],
-                    metacritic_score=row[6],
-                    platform_support=get_supported_platforms(row[7]) if row[7] else None,
-                    header_image=row[8]
-                )
-
-                return game
-            else:
-                return None
-            
+# GameInfo object to get detailed game information
 class GameInfo(BaseModel):
     game_id: Optional[int] = None
     game_name: Optional[str] = None
@@ -84,7 +60,10 @@ class GameInfo(BaseModel):
     publishers: Optional[List[str]] = None
     is_purchased: Optional[bool] = None
 
-    def get_game_info(self, conn: mysql.connector.MySQLConnection, user_id: str=None) -> 'GameInfo':
+    # Get detailed game information
+    def get_game_info(self, conn: mysql.connector.MySQLConnection, 
+                      user_id: str=None) -> 'GameInfo':
+        
         if not self.game_id or not user_id:
             return None
         
@@ -111,14 +90,16 @@ class GameInfo(BaseModel):
                     price_usd=row[4],
                     about_game=row[5],
                     metacritic_score=row[6],
-                    platform_support=get_supported_platforms(row[7]) if row[7] else None,
+                    platform_support=get_supported_platforms(row[7]) if row[7] 
+                                        else None,
                     header_image=row[8],
                     video_urls=row[9].split(',') if row[9] else None,
                     categories=row[10].split(',') if row[10] else None,
                     genres=row[11].split(',') if row[11] else None,
                     tags=row[12].split(',') if row[12] else None,
                     supported_langs=row[13].split(',') if row[13] else None,
-                    supported_audio_langas=row[14].split(',') if row[14] else None,
+                    supported_audio_langas=row[14].split(',') if row[14] 
+                                        else None,
                     developers=row[15].split(',') if row[15] else None,
                     publishers=row[16].split(',') if row[16] else None,
                     is_purchased=purchased
@@ -127,8 +108,10 @@ class GameInfo(BaseModel):
                 return game_info
             else:
                 return None
-            
-    def purchase_game(self, conn: mysql.connector.MySQLConnection, user_id: int) -> 'GameInfo':
+    
+    # Purchase the game
+    def purchase_game(self, conn: mysql.connector.MySQLConnection, 
+                      user_id: int) -> 'GameInfo':
         if not self.game_id or not user_id:
             return None
 
@@ -142,7 +125,8 @@ class GameInfo(BaseModel):
         
         return self
             
-            
+
+# Games object to relate to the game table (multiple games)            
 class Games(BaseModel):
     games: List[Game]
 
@@ -167,7 +151,8 @@ class Games(BaseModel):
                         price_usd=row[4],
                         about_game=row[5],
                         metacritic_score=row[6],
-                        platform_support=get_supported_platforms(row[7]) if row[7] else None,
+                        platform_support=get_supported_platforms(row[7]) 
+                                            if row[7] else None,
                         header_image=row[8]
                     )
                     games.append(game)
@@ -177,10 +162,13 @@ class Games(BaseModel):
             print(err)
             return None
     
+    # Get games by all attributes
     def get_games_by_all_limit(self, conn: mysql.connector.MySQLConnection,
-                               category_ids_str: str = "", genre_ids_str: str = "", tag_ids_str: str = "",
-                                 lang_ids_str: str = "", audio_lang_ids_str: str = "", dev_ids_str: str = "",
-                                    pub_ids_str: str = "", limit: int = 10, offset: int = 0) -> 'Games':
+            category_ids_str: str = "", genre_ids_str: str = "",
+            tag_ids_str: str = "", lang_ids_str: str = "", 
+            audio_lang_ids_str: str = "", dev_ids_str: str = "",
+            pub_ids_str: str = "", limit: int = 10, offset: int = 0
+            ) -> 'Games':
         
         query = f"""
                 CALL {PROC_GET_GAMES_BY_ALL_LIMIT}( 
@@ -210,7 +198,8 @@ class Games(BaseModel):
                         price_usd=row[4],
                         about_game=row[5],
                         metacritic_score=row[6],
-                        platform_support=get_supported_platforms(row[7]) if row[7] else None,
+                        platform_support=get_supported_platforms(row[7]) 
+                                            if row[7] else None,
                         header_image=row[8]
                     )
                     games.append(game)
@@ -220,6 +209,7 @@ class Games(BaseModel):
             print(err)
             return None
 
+# User object to relate to the user table
 class User(BaseModel):
     user_id: Optional[int] = None
     username: Optional[str] = None
@@ -257,19 +247,22 @@ class User(BaseModel):
             print(err)
             return None
             
-    def auth_user(self, conn: mysql.connector.MySQLConnection, password: str) -> 'User':
+    def auth_user(self, conn: mysql.connector.MySQLConnection, 
+                  password: str) -> 'User':
         if not self.username or not password:
             return None
 
         try:
             with conn.cursor() as cursor:
-                cursor.execute(f"SELECT {FUNC_AUTHENTICATE}(%s, %s);", (self.username, password))
+                cursor.execute(f"SELECT {FUNC_AUTHENTICATE}(%s, %s);", 
+                               (self.username, password))
                 row = cursor.fetchone()
                 
                 if row is None or row[0] == 0:
                     return None
 
-                cursor.execute(f"SELECT * FROM user WHERE username = %s;", (self.username,))
+                cursor.execute(f"SELECT * FROM user WHERE username = %s;", 
+                               (self.username,))
                 row = cursor.fetchone()
 
                 if not row:
@@ -286,20 +279,24 @@ class User(BaseModel):
             print(err)
             return None
             
-    def create_user(self, conn: mysql.connector.MySQLConnection, password: str) -> 'User':
+    def create_user(self, conn: mysql.connector.MySQLConnection, 
+                    password: str) -> 'User':
         if not self.username or not password:
             return None
         
         try:
             with conn.cursor() as cursor:
-                cursor.execute(f"SELECT * FROM user WHERE username = %s;", (self.username,))
+                cursor.execute(f"SELECT * FROM user WHERE username = %s;", 
+                               (self.username,))
                 row = cursor.fetchone()
                 if row is not None:
                     return None
                 else:
-                    cursor.callproc(PROC_ADD_USER, (self.username, password, DEFAULT_ROLE))
+                    cursor.callproc(PROC_ADD_USER, 
+                                    (self.username, password, DEFAULT_ROLE))
 
-                    cursor.execute(f"SELECT * FROM user WHERE username = %s;", (self.username,))
+                    cursor.execute(f"SELECT * FROM user WHERE username = %s;", 
+                                   (self.username,))
                     row = cursor.fetchone()
                     conn.commit()
 
@@ -317,13 +314,15 @@ class User(BaseModel):
             print(err)
             return None
             
-    def change_password(self, conn: mysql.connector.MySQLConnection, password: str) -> 'User':
+    def change_password(self, conn: mysql.connector.MySQLConnection, 
+                        password: str) -> 'User':
         if not self.user_id or not self.username or not password:
             return None
         
         try:
             with conn.cursor() as cursor:
-                cursor.callproc(PROC_CHANGE_PASSWORD, (self.username, password))
+                cursor.callproc(PROC_CHANGE_PASSWORD, 
+                                (self.username, password))
                 conn.commit()
         except mysql.connector.Error as err:
             print(err)
@@ -331,7 +330,8 @@ class User(BaseModel):
         
         return self
     
-    def delete_user(self, conn: mysql.connector.MySQLConnection, my_role: str) -> 'User':
+    def delete_user(self, conn: mysql.connector.MySQLConnection, 
+                    my_role: str) -> 'User':
         if my_role != 'admin':
             return None
         
@@ -348,7 +348,8 @@ class User(BaseModel):
         
         return self
     
-    def update_user_role(self, conn: mysql.connector.MySQLConnection, my_role: str) -> 'User':
+    def update_user_role(self, conn: mysql.connector.MySQLConnection, 
+                         my_role: str) -> 'User':
         if my_role != 'admin':
             return None
         
@@ -357,7 +358,8 @@ class User(BaseModel):
         
         try:
             with conn.cursor() as cursor:
-                cursor.callproc(PROC_UPDATE_USER_ROLE, (self.username, self.user_role,))
+                cursor.callproc(PROC_UPDATE_USER_ROLE, 
+                                (self.username, self.user_role,))
                 conn.commit()
         except mysql.connector.Error as err:
             print(err)
@@ -405,7 +407,8 @@ class Purchase(BaseModel):
     purchase_date: Optional[datetime.date] = None
     purchase_price: Optional[float] = None
 
-    def get_purchase(self, conn: mysql.connector.MySQLConnection) -> 'Purchase':
+    def get_purchase(self, 
+                     conn: mysql.connector.MySQLConnection) -> 'Purchase':
         params = (self.purchase_id,)
 
         query = """
@@ -455,7 +458,8 @@ class Purchases(BaseModel):
         return Purchases(purchases=purchases)
     
     def get_user_purchases(self, conn: mysql.connector.MySQLConnection,
-                  user_id: int, limit: int = 10, offset: int = 0) -> 'Purchases':
+                           user_id: int, limit: int = 10, 
+                           offset: int = 0) -> 'Purchases':
         
         query = """
                 SELECT * FROM purchases WHERE user_id = %s LIMIT %s OFFSET %s;
@@ -478,10 +482,12 @@ class Purchases(BaseModel):
         return Purchases(purchases=purchases)
     
     def get_game_purchases(self, conn: mysql.connector.MySQLConnection,
-                    game_id: int, limit: int = 10, offset: int = 0) -> 'Purchases':
+                            game_id: int, limit: int = 10, 
+                            offset: int = 0) -> 'Purchases':
             
             query = """
-                    SELECT * FROM purchases WHERE game_id = %s LIMIT %s OFFSET %s;
+                    SELECT * FROM purchases 
+                    WHERE game_id = %s LIMIT %s OFFSET %s;
                     """ % (game_id, limit, offset)
             
             with conn.cursor() as cursor:
@@ -514,7 +520,8 @@ class UserPurchases(BaseModel):
     header_image: Optional[str] = None
 
     def get_user_purchases(self, conn: mysql.connector.MySQLConnection,
-                    user_id: int, limit: int = 10, offset: int = 0) -> List['UserPurchases']:
+                    user_id: int, limit: int = 10, 
+                    offset: int = 0) -> List['UserPurchases']:
             
             query = f"""
                     SELECT 
@@ -549,7 +556,8 @@ class UserPurchases(BaseModel):
                             game_name=row[4],
                             release_date=row[5],
                             price_usd=row[6],
-                            platform_support=get_supported_platforms(row[7]) if row[7] else None,
+                            platform_support=get_supported_platforms(row[7]) 
+                                                if row[7] else None,
                             metacritic_score=row[8],
                             header_image=row[9]
                         )
@@ -573,7 +581,8 @@ class Attributes(BaseModel):
     developers: Optional[List[Attribute]] = None
     publishers: Optional[List[Attribute]] = None
 
-    def get_attributes(self, conn: mysql.connector.MySQLConnection) -> 'Attributes':
+    def get_attributes(self, 
+                       conn: mysql.connector.MySQLConnection) -> 'Attributes':
         query = f"""
                 SELECT * FROM {VIEW_ATTRIBUTES};
                 """

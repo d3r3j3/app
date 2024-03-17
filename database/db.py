@@ -3,13 +3,15 @@ from mysql.connector import errorcode
 import sys
 
 HOST = 'localhost'
-USER = 'admin'
+USER = 'client'
 PORT = '3306'
-PASSWORD = 'admin'
+PASSWORD = 'client'
 DATABASE = 'games'
 DEBUG = True
 
-def get_conn(user: str=USER, password: str=PASSWORD) -> mysql.connector.MySQLConnection:
+def get_conn(
+        user: str=USER, 
+        password: str=PASSWORD) -> mysql.connector.MySQLConnection:
     """"
     Returns a connected MySQL connector instance, if connection is successful.
     If unsuccessful, exits.

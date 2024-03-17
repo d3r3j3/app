@@ -1,26 +1,15 @@
 -- Includes all SELECT queries used for the entire project
 
--- Counts the total purchases made by a specific user for a specific game, 
--- storing the result in the 'purchased' variable.
-
-SELECT COUNT(*) INTO purchased
+-- Counts the total purchases made.
+SELECT COUNT(*) AS purchase_cnt
     FROM purchases
-    WHERE purchases.user_id = user_id AND purchases.game_id = game_id;
+    WHERE user_id = user_id AND game_id = game_id;
 
--- Retrieves the price in USD of a specific game by its game_id, storing the 
--- result in the 'game_price' variable.
-SELECT price_usd INTO game_price FROM game WHERE game.game_id = game_id;
+-- Retrieves the price in USD of a specific game by its game_id.
+SELECT price_usd FROM game WHERE game_id = 10;
 
--- Retrieves the current balance of a specific user by their user_id, storing 
--- the result in the 'user_balance' variable.
-SELECT balance INTO user_balance FROM user WHERE user.user_id = user_id;
-
--- Deducts the price of a game from the user's balance upon a new purchase, 
--- using the game's price and the user's ID from a triggering event.
-UPDATE user
-    SET balance = balance - (
-        SELECT price_usd FROM game WHERE game_id = NEW.game_id)
-    WHERE user_id = NEW.user_id;
+-- Retrieves the current balance of a specific user by their user_id.
+SELECT balance FROM user WHERE user_id = 5;
 
 -- Retrieves comprehensive details of a specific game, including videos, 
 -- categories, genres, tags, supported languages, audio languages, developers, 
@@ -59,7 +48,7 @@ SELECT
     NATURAL LEFT JOIN developers
     NATURAL LEFT JOIN game_publishers
     NATURAL LEFT JOIN publishers
-    WHERE game.game_id = game_id
+    WHERE game.game_id = 20
     GROUP BY 
         game.game_id,
         game.game_name,
@@ -74,7 +63,7 @@ SELECT
 -- Selects game IDs from the game_categories table where the category ID 
 -- matches any within the specified list, grouping results by game ID.
 SELECT game_id FROM game_categories 
-                WHERE category_id IN (', category_ids, ') 
+                WHERE category_id IN ('23') 
                 GROUP BY game_id;
 
 -- Retrieves the first 10 records from the game table, starting from the 
@@ -126,7 +115,7 @@ LIMIT 10 OFFSET 0;
 -- Retrieves all records from the attributes_view, which consolidates 
 -- various attribute types like categories, genres, tags, languages, developers,
 --  and publishers into a single unified view.
-SELECT * FROM attributes_view;
+SELECT * FROM attributes_view LIMIT 1000 OFFSET 0;
 
 -- This SQL query retrieves the game name, genre name, and the total number of 
 -- purchases for each game, grouped by game and genre. This is used in the 
@@ -138,28 +127,3 @@ JOIN game_genres gg ON g.game_id = gg.game_id
 JOIN genres ge ON gg.genre_id = ge.genre_id
 GROUP BY g.game_name, ge.genre_name
 ORDER BY ge.genre_name, total_purchases DESC;
-
-
--- This query updates the balance of users who purchased a specific game, 
--- deducting the game's price from their balance. This is also used in the 
--- relational algebra portion.
-UPDATE user u
-SET balance = balance - (
-    SELECT price_usd
-    FROM game
-    WHERE game_id = (
-        SELECT game_id
-        FROM game
-        WHERE game_name = 'Galactic Bowling'
-    )
-)
-WHERE EXISTS (
-    SELECT 1
-    FROM purchases p
-    WHERE p.user_id = u.user_id
-    AND p.game_id = (
-        SELECT game_id
-        FROM game
-        WHERE game_name = 'Galactic Bowling'
-    )
-);

@@ -3,11 +3,10 @@ from mysql.connector import errorcode
 import sys
 
 HOST = 'localhost'
-USER = 'client'
+USER = 'admin'
 PORT = '3306'
-PASSWORD = 'client'
+PASSWORD = 'admin'
 DATABASE = 'games'
-CHARSET = 'utf8mb4'
 DEBUG = True
 
 def get_conn(user: str=USER, password: str=PASSWORD) -> mysql.connector.MySQLConnection:

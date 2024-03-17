@@ -3,9 +3,6 @@ DROP DATABASE IF exists games;
 CREATE DATABASE games;
 USE games;
 
--- Alter database to support utf8mb4 encoding (for emoji support)
-ALTER DATABASE games CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-
 -- Drop tables if they exist
 DROP TABLE IF EXISTS game;
 DROP TABLE IF EXISTS user;
@@ -46,6 +43,10 @@ CREATE TABLE game (
     header_image VARCHAR(255),
     PRIMARY KEY (game_id, game_name)
 );
+
+-- Allow about_game to support emojis (utf8mb4)
+ALTER TABLE game MODIFY about_game 
+TEXT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Table containing game videos
 CREATE TABLE game_videos (
@@ -170,6 +171,10 @@ CREATE TABLE developers (
     dev_name VARCHAR(255) UNIQUE
 );
 
+-- Allowing for developer names to support emojis (utf8mb4)
+ALTER TABLE developers MODIFY dev_name
+VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
 -- Junction table for relation between developers and games
 CREATE TABLE game_developers (
     game_id INT,
@@ -185,6 +190,10 @@ CREATE TABLE publishers (
     -- publisher name (ex: bad gremlin studios)
     pub_name VARCHAR(255) UNIQUE
 );
+
+-- Allowing for publisher names to support emojis (utf8mb4)
+ALTER TABLE publishers MODIFY pub_name
+VARCHAR(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Junction table for relation between publishers and games
 CREATE TABLE game_publishers (

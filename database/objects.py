@@ -153,25 +153,29 @@ class Games(BaseModel):
                 SELECT * FROM game LIMIT %s OFFSET %s;
                 """ % (limit, offset)
         
-        with conn.cursor() as cursor:
-            cursor.execute(query)
-            rows = cursor.fetchall()
-            games = []
-            for row in rows:
-                game = Game(
-                    game_id=row[0],
-                    game_name=row[1],
-                    release_date=row[2],
-                    estimated_owners=row[3],
-                    price_usd=row[4],
-                    about_game=row[5],
-                    metacritic_score=row[6],
-                    platform_support=get_supported_platforms(row[7]) if row[7] else None,
-                    header_image=row[8]
-                )
-                games.append(game)
-        
-        return Games(games=games)
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+                games = []
+                for row in rows:
+                    game = Game(
+                        game_id=row[0],
+                        game_name=row[1],
+                        release_date=row[2],
+                        estimated_owners=row[3],
+                        price_usd=row[4],
+                        about_game=row[5],
+                        metacritic_score=row[6],
+                        platform_support=get_supported_platforms(row[7]) if row[7] else None,
+                        header_image=row[8]
+                    )
+                    games.append(game)
+            
+            return Games(games=games)
+        except mysql.connector.Error as err:
+            print(err)
+            return None
     
     def get_games_by_all_limit(self, conn: mysql.connector.MySQLConnection,
                                category_ids_str: str = "", genre_ids_str: str = "", tag_ids_str: str = "",

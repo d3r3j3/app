@@ -10,7 +10,7 @@
     - Best to do this in a virtual environment
     - Also make sure you are in the root directory of the project
 5. Now change directory to the database/setup folder and
-    - Run the following commands (connect to mysql as root):
+    - Run the following commands (connect to mysql as root) (tested on MySQL version 5):
         - `source setup.sql`
         - `source load-data.sql`
         - `source setup-passwords.sql`

@@ -3,8 +3,12 @@ DROP FUNCTION IF EXISTS make_salt;
 DROP FUNCTION IF EXISTS authenticate;
 DROP PROCEDURE IF EXISTS sp_add_user;
 DROP PROCEDURE IF EXISTS sp_change_password;
+DROP PROCEDURE IF EXISTS sp_delete_user;
+DROP PROCEDURE IF EXISTS sp_update_user_role;
 
 -- Generate a random salt for the user
+
+DELIMITER !
 
 CREATE FUNCTION make_salt(num_chars INT)
 RETURNS VARCHAR(20) NOT DETERMINISTIC
@@ -22,9 +26,13 @@ BEGIN
     END WHILE;
 
     RETURN salt;
-END;
+END !
+
+DELIMITER ;
 
 -- Procedure to add a new user to the user table
+
+DELIMITER !
 
 CREATE PROCEDURE sp_add_user(
     new_username VARCHAR(20), password VARCHAR(20), user_role VARCHAR(20))
@@ -39,10 +47,13 @@ BEGIN
     -- Insert the new user into the table.
     INSERT INTO user (username, password_hash, salt, user_role, date_joined)
     VALUES (new_username, new_hash, new_salt, user_role, CURDATE());
-END;
+END !
+
+DELIMITER ;
 
 -- Procedure to delete a user from the user table
-DROP PROCEDURE IF EXISTS sp_delete_user;
+
+DELIMITER !
 
 CREATE PROCEDURE sp_delete_user(
     username VARCHAR(20), user_role VARCHAR(20))
@@ -50,10 +61,13 @@ BEGIN
     IF user_role = 'admin' THEN
         DELETE FROM user WHERE user.username = username;
     END IF;
-END;
+END !
+
+DELIMITER ;
 
 -- Procedure to update a user's role
-DROP PROCEDURE IF EXISTS sp_update_user_role;
+
+DELIMITER !
 
 CREATE PROCEDURE sp_update_user_role(
     username VARCHAR(20), new_role VARCHAR(20))
@@ -61,9 +75,13 @@ BEGIN
     UPDATE user
     SET user_role = new_role
     WHERE user.username = username;
-END;
+END !
+
+DELIMITER ;
 
 -- Procedure to authenticate a user
+
+DELIMITER !
 
 CREATE FUNCTION authenticate(username VARCHAR(20), password VARCHAR(20))
 RETURNS TINYINT DETERMINISTIC
@@ -87,9 +105,13 @@ BEGIN
 
   -- Return 1 if the hashes match, 0 otherwise.
   RETURN user_hash = given_hash;
-END;
+END !
+
+DELIMITER ;
 
 -- Procedure to change a user's password
+
+DELIMITER !
 
 CREATE PROCEDURE sp_change_password(
   username VARCHAR(20), new_password VARCHAR(20))
@@ -105,4 +127,6 @@ BEGIN
   UPDATE user
   SET salt = new_salt, password_hash = new_hash
   WHERE user.username = username;
-END;
+END !
+
+DELIMITER ;

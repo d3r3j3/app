@@ -72,6 +72,8 @@ DELIMITER ;
 DROP PROCEDURE IF EXISTS sp_get_game_info;
 DROP PROCEDURE IF EXISTS sp_make_purchase;
 DROP PROCEDURE IF EXISTS sp_get_games_by_all_limit;
+DROP PROCEDURE IF EXISTS sp_create_users;
+DROP PROCEDURE IF EXISTS sp_make_random_purchases;
 
 -- Procedure to get all information about a game
 DELIMITER !
@@ -314,4 +316,50 @@ BEGIN
     DEALLOCATE PREPARE stmt;
 END !
 
+DELIMITER ;
+
+-- Procedure to add users in bulk
+
+DELIMITER !
+CREATE PROCEDURE sp_create_users(user_cnt INT)
+BEGIN
+    DECLARE i INT DEFAULT 0;
+    
+    WHILE i < user_cnt DO
+        SET i = i + 1;
+        CALL sp_add_user(CONCAT('user', i), 'password', 'user');
+    END WHILE;
+END !
+DELIMITER ;
+
+-- Procedure to make random user purchases
+
+DELIMITER !
+CREATE PROCEDURE sp_make_random_purchases(purchase_cnt INT)
+BEGIN
+    DECLARE i INT DEFAULT 0;
+
+    DROP TEMPORARY TABLE IF EXISTS game_ids;
+    DROP TEMPORARY TABLE IF EXISTS user_ids;
+    
+    -- Get user_ids
+    CREATE TEMPORARY TABLE user_ids AS
+    SELECT user_id FROM user WHERE user_role = 'user';
+
+    -- Get 10000 random game_ids
+    CREATE TEMPORARY TABLE game_ids AS
+    SELECT game_id FROM game ORDER BY RAND() LIMIT 10000;
+
+    -- Make random purchases
+    WHILE i < purchase_cnt DO
+        SET i = i + 1;
+        CALL sp_make_purchase(
+            (SELECT user_id FROM user_ids ORDER BY RAND() LIMIT 1),
+            (SELECT game_id FROM game_ids ORDER BY RAND() LIMIT 1)
+        );
+    END WHILE;
+
+    DROP TEMPORARY TABLE user_ids;
+    DROP TEMPORARY TABLE game_ids;
+END !
 DELIMITER ;

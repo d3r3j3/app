@@ -90,8 +90,8 @@ def run_load_data():
     with open('load-data.sql') as f:
         cursor.execute(f.read(), multi=True)
 
-    # commit the changes
-    conn.commit()
+    # # commit the changes
+    # conn.commit()
 
     # close the connection
     conn.close()

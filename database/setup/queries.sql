@@ -127,3 +127,39 @@ LIMIT 10 OFFSET 0;
 -- various attribute types like categories, genres, tags, languages, developers,
 --  and publishers into a single unified view.
 SELECT * FROM attributes_view;
+
+-- This SQL query retrieves the game name, genre name, and the total number of 
+-- purchases for each game, grouped by game and genre. This is used in the 
+-- relational algebra portion
+SELECT g.game_name, ge.genre_name, COUNT(p.purchase_id) AS total_purchases
+FROM purchases p
+JOIN game g ON p.game_id = g.game_id
+JOIN game_genres gg ON g.game_id = gg.game_id
+JOIN genres ge ON gg.genre_id = ge.genre_id
+GROUP BY g.game_name, ge.genre_name
+ORDER BY ge.genre_name, total_purchases DESC;
+
+
+-- This query updates the balance of users who purchased a specific game, 
+-- deducting the game's price from their balance. This is also used in the 
+-- relational algebra portion.
+UPDATE user u
+SET balance = balance - (
+    SELECT price_usd
+    FROM game
+    WHERE game_id = (
+        SELECT game_id
+        FROM game
+        WHERE game_name = 'Galactic Bowling'
+    )
+)
+WHERE EXISTS (
+    SELECT 1
+    FROM purchases p
+    WHERE p.user_id = u.user_id
+    AND p.game_id = (
+        SELECT game_id
+        FROM game
+        WHERE game_name = 'Galactic Bowling'
+    )
+);
